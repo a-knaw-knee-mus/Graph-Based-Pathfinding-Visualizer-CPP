@@ -1,0 +1,7 @@
+cmake-build-debug/*
+!cmake-build-debug/graph_search.exe
+!cmake-build-debug/screenshots
+!cmake-build-debug/images
+!cmake-build-debug/sfml
+!cmake-build-debug/fonts
+.idea

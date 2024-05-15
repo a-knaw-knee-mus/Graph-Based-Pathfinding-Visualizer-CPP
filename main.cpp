@@ -7,6 +7,7 @@
 using namespace sf;
 using namespace std;
 
+// get the line shapes that represent connections between nodes to be drawn to the window
 vector<VertexArray> getConnectionsBetweenNodes(vector<vector<shared_ptr<CircleShape>>> connectionData) {
     vector<VertexArray> connections;
 
@@ -42,7 +43,6 @@ int main() {
     // Define two circles
     const int circleRadius = 30;
     vector<shared_ptr<CircleShape>> nodes;
-    //nodes.reserve(100); // so that inserting new nodes doesn't resize, so addresses don't change
     vector<vector<shared_ptr<CircleShape>>> connectionData;
 
     CircleShape node1(circleRadius-4);
@@ -63,7 +63,7 @@ int main() {
 
     int currCircle = -1;
     Vector2f offset; // Offset for dragging
-    int lineStartIdx=-1, lineEndIdx=-1;
+    int lineStartIdx=-1;
 
     while (window.isOpen()) {
         Event event;
@@ -84,15 +84,13 @@ int main() {
             else if (lineStartIdx!=-1 && event.type == Event::MouseButtonReleased && event.mouseButton.button == Mouse::Right) {
                 Vector2f mousePos = Vector2f(Mouse::getPosition(window));
                 if (!(mousePos.x >= 0 && mousePos.x <= window.getSize().x && mousePos.y >= 0 && mousePos.y <= window.getSize().y)) continue;
-                for (int i = 0; i < nodes.size(); i++) {
-                    if (nodes[i]->getGlobalBounds().contains(mousePos)) {
-                        lineEndIdx = i;
+                for (int lineEndIdx = 0; lineEndIdx < nodes.size(); lineEndIdx++) {
+                    if (nodes[lineEndIdx]->getGlobalBounds().contains(mousePos)) {
                         if (!doesConnectionExist(connectionData, nodes[lineStartIdx], nodes[lineEndIdx])) {
                             connectionData.push_back({nodes[lineStartIdx], nodes[lineEndIdx]});
                         }
 
                         lineStartIdx = -1;
-                        lineEndIdx = -1;
                         break;
                     }
                 }

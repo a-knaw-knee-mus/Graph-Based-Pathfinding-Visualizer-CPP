@@ -1,30 +1,49 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
+#include <tuple>
 #include <cmath>
 #include <iostream>
 using namespace sf;
 using namespace std;
+
+vector<VertexArray> getConnectionsBetweenNodes(vector<vector<CircleShape*>> connectionData) {
+    vector<VertexArray> connections;
+
+    for (auto& c: connectionData) {
+        VertexArray line(Lines, 2);
+        line[0].position = c[0]->getPosition();
+        line[0].color = Color::Red;
+        line[1].position = c[1]->getPosition();
+        line[1].color = Color::Blue;
+        connections.push_back(line);
+    }
+    return connections;
+}
 
 int main() {
     RenderWindow window(VideoMode(600, 600), "Graph Pathfinding");
 
     // Define two circles
     const int circleRadius = 30;
-    vector<CircleShape> circles;
+    vector<CircleShape> nodes;
+    // vector<VertexArray> connections;
+    vector<vector<CircleShape*>> connectionData;
 
-    CircleShape circle1(circleRadius-4);
-    circle1.setPosition(100, 100);
-    circle1.setOutlineColor(Color::Black);
-    circle1.setOutlineThickness(2);
-    circle1.setOrigin({ circle1.getRadius(), circle1.getRadius() });
-    circles.push_back(circle1);
+    CircleShape node1(circleRadius-4);
+    node1.setPosition(100, 100);
+    node1.setOutlineColor(Color::Black);
+    node1.setOutlineThickness(2);
+    node1.setOrigin({ node1.getRadius(), node1.getRadius() });
+    nodes.push_back(node1);
 
-    CircleShape circle2(circleRadius-4);
-    circle2.setPosition(300, 300);
-    circle2.setOutlineColor(Color::Black);
-    circle2.setOutlineThickness(2);
-    circle2.setOrigin({ circle2.getRadius(), circle2.getRadius() });
-    circles.push_back(circle2);
+    CircleShape node2(circleRadius-4);
+    node2.setPosition(300, 300);
+    node2.setOutlineColor(Color::Black);
+    node2.setOutlineThickness(2);
+    node2.setOrigin({ node2.getRadius(), node2.getRadius() });
+    nodes.push_back(node2);
+
+    connectionData.push_back({&nodes[0], &nodes[1]});
 
     int currCircle = -1;
     Vector2f offset; // Offset for dragging
@@ -37,9 +56,9 @@ int main() {
             else if (event.type == Event::MouseButtonPressed) {
                 Vector2f mousePos = Vector2f(Mouse::getPosition(window));
                 if (!(mousePos.x >= 0 && mousePos.x <= window.getSize().x && mousePos.y >= 0 && mousePos.y <= window.getSize().y)) continue;
-                for (int i = 0; i < circles.size(); i++) {
-                    if (circles[i].getGlobalBounds().contains(mousePos)) {
-                        offset = mousePos - circles[i].getPosition();
+                for (int i = 0; i < nodes.size(); i++) {
+                    if (nodes[i].getGlobalBounds().contains(mousePos)) {
+                        offset = mousePos - nodes[i].getPosition();
                         currCircle = i;
                     }
                 }
@@ -57,7 +76,7 @@ int main() {
                         for (float x = circleRadius+10; x < window.getSize().x-circleRadius-10; x += circleRadius * 2) {
                             newPos = Vector2f(x, y);
                             bool validPosition = true;
-                            for (const auto& existingCircle : circles) {
+                            for (const auto& existingCircle : nodes) {
                                 float combinedRadius = newCircle.getRadius() + existingCircle.getRadius();
                                 Vector2f centerDiff = newPos - existingCircle.getPosition();
                                 float centerDist = sqrt(centerDiff.x * centerDiff.x + centerDiff.y * centerDiff.y);
@@ -78,7 +97,7 @@ int main() {
                         newCircle.setOutlineColor(Color::Black);
                         newCircle.setOutlineThickness(2);
                         newCircle.setOrigin({ newCircle.getRadius(), newCircle.getRadius() });
-                        circles.push_back(newCircle);
+                        nodes.push_back(newCircle);
                     } else {
                         cout << "No possible spot found" << endl;
                     }
@@ -87,32 +106,35 @@ int main() {
         }
 
         // Dragging logic
-        if (Mouse::isButtonPressed(Mouse::Left)) {
-            if (currCircle == -1) continue;
+        if (currCircle == -1 && Mouse::isButtonPressed(Mouse::Left)) {
             Vector2f mousePos = Vector2f(Mouse::getPosition(window));
 
             Vector2f newPos = mousePos - offset; // Calculate potential new position
 
             // Check collision before updating position
             bool collisionDetected = false;
-            for (int i = 0; i < circles.size(); i++) {
+            for (int i = 0; i < nodes.size(); i++) {
                 if (i == currCircle) continue;
                 Vector2f currCirclePoints = newPos;
-                Vector2f otherCirclePoints = circles[i].getPosition();
+                Vector2f otherCirclePoints = nodes[i].getPosition();
                 float distance = sqrt(pow(currCirclePoints.x - otherCirclePoints.x, 2) + pow(currCirclePoints.y - otherCirclePoints.y, 2));
-                if (distance < circles[currCircle].getRadius() + circles[i].getRadius() + (circleRadius*0.7)) {
+                if (distance < nodes[currCircle].getRadius() + nodes[i].getRadius() + (circleRadius*0.7)) {
                     collisionDetected = true;
                     break;
                 }
             }
 
             if (!collisionDetected) {
-                circles[currCircle].setPosition(newPos); // Update position if no collision detected
+                nodes[currCircle].setPosition(newPos); // Update position if no collision detected
             }
         }
 
         window.clear(Color::White);
-        for (auto& circle : circles) {
+        for (const auto& connection: getConnectionsBetweenNodes(connectionData)) {
+            window.draw(connection);
+        }
+        // cout << nodes[0].getPosition().x << " " << nodes[0].getPosition().y << endl;
+        for (auto& circle : nodes) {
             window.draw(circle);
         }
         window.display();

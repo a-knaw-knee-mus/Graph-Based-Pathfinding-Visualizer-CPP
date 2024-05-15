@@ -7,15 +7,22 @@
 using namespace sf;
 using namespace std;
 
+struct Connection {
+    shared_ptr<CircleShape> start, end;
+    int weight;
+
+    Connection(const shared_ptr<CircleShape> start, const shared_ptr<CircleShape> end, const int weight=1) : start(start), end(end), weight(weight) {}
+};
+
 // get the line shapes that represent connections between nodes to be drawn to the window
-vector<VertexArray> getConnectionsBetweenNodes(vector<vector<shared_ptr<CircleShape>>> connectionData) {
+vector<VertexArray> getConnectionsBetweenNodes(vector<Connection> connectionData) {
     vector<VertexArray> connections;
 
     for (auto& c: connectionData) {
         VertexArray line(Lines, 2);
-        line[0].position = c[0]->getPosition();
+        line[0].position = c.start->getPosition();
         line[0].color = Color::Red;
-        line[1].position = c[1]->getPosition();
+        line[1].position = c.end->getPosition();
         line[1].color = Color::Blue;
         connections.push_back(line);
     }
@@ -32,15 +39,11 @@ float distance(Vector2f v1, Vector2f v2, Vector2f p) {
 }
 
 // check if connection between 2 nodes exists in either direction
-bool doesConnectionExist(vector<vector<shared_ptr<CircleShape>>> connectionData, shared_ptr<CircleShape> start, shared_ptr<CircleShape> end) {
-    vector<shared_ptr<CircleShape>> v = {start, end};
-    if (find(connectionData.begin(), connectionData.end(), v) != connectionData.end()) {
-        return true;
-    }
-
-    v = {end, start};
-    if (find(connectionData.begin(), connectionData.end(), v) != connectionData.end()) {
-        return true;
+bool doesConnectionExist(vector<Connection> connectionData, shared_ptr<CircleShape> start, shared_ptr<CircleShape> end) {
+    for (const auto& connection : connectionData) {
+        if ((connection.start == start && connection.end == end) || (connection.start == end && connection.end == start)) {
+            return true;
+        }
     }
 
     return false;
@@ -52,7 +55,7 @@ int main() {
     // Define two circles
     const int circleRadius = 30;
     vector<shared_ptr<CircleShape>> nodes;
-    vector<vector<shared_ptr<CircleShape>>> connectionData;
+    vector<Connection> connectionData;
 
     CircleShape node1(circleRadius-4);
     node1.setPosition(100, 100);
@@ -68,7 +71,7 @@ int main() {
     node2.setOrigin({ node2.getRadius(), node2.getRadius() });
     nodes.push_back(make_shared<CircleShape>(node2));
 
-    connectionData.push_back({nodes[0], nodes[1]});
+    connectionData.emplace_back(nodes[0], nodes[1]);
 
     int currCircle = -1;
     Vector2f offset; // Offset for dragging
@@ -96,21 +99,15 @@ int main() {
                 for (int i = 0; i < nodes.size(); i++) {
                     if (nodes[i]->getGlobalBounds().contains(mousePos)) {
                         shared_ptr<CircleShape> removedNode = nodes[i];
-                        nodes.erase(nodes.begin()+i);
-                        for (auto it = connectionData.begin(); it != connectionData.end();) {
-                            bool deleteConnection = false;
-                            for (const auto& node : *it) {
-                                if (node == removedNode) { // Compare with the iterator, not nodes[0]
-                                    deleteConnection = true;
-                                    break;
-                                }
-                            }
-                            if (deleteConnection) {
-                                it = connectionData.erase(it);
-                            } else {
-                                ++it;
-                            }
-                        }
+                        nodes.erase(nodes.begin() + i);
+
+                        // Use a lambda function to check if a connection should be deleted
+                        auto shouldDeleteConnection = [&](const Connection& connection) {
+                            return connection.start == removedNode || connection.end == removedNode;
+                        };
+
+                        connectionData.erase(remove_if(connectionData.begin(), connectionData.end(), shouldDeleteConnection), connectionData.end());
+                        break;  // Exit loop after deleting the node and its connections
                     }
                 }
 
@@ -143,7 +140,7 @@ int main() {
                 for (int lineEndIdx = 0; lineEndIdx < nodes.size(); lineEndIdx++) {
                     if (nodes[lineEndIdx]->getGlobalBounds().contains(mousePos)) {
                         if (!doesConnectionExist(connectionData, nodes[lineStartIdx], nodes[lineEndIdx])) {
-                            connectionData.push_back({nodes[lineStartIdx], nodes[lineEndIdx]});
+                            connectionData.emplace_back(nodes[lineStartIdx], nodes[lineEndIdx]);
                         }
 
                         lineStartIdx = -1;

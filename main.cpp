@@ -3,6 +3,7 @@
 #include <memory>
 #include <cmath>
 #include <iostream>
+#include <algorithm>
 using namespace sf;
 using namespace std;
 
@@ -18,6 +19,21 @@ vector<VertexArray> getConnectionsBetweenNodes(vector<vector<shared_ptr<CircleSh
         connections.push_back(line);
     }
     return connections;
+}
+
+// check if connection between 2 nodes exists in either direction
+bool doesConnectionExist(vector<vector<shared_ptr<CircleShape>>> connectionData, shared_ptr<CircleShape> start, shared_ptr<CircleShape> end) {
+    vector<shared_ptr<CircleShape>> v = {start, end};
+    if (find(connectionData.begin(), connectionData.end(), v) != connectionData.end()) {
+        return true;
+    }
+
+    v = {end, start};
+    if (find(connectionData.begin(), connectionData.end(), v) != connectionData.end()) {
+        return true;
+    }
+
+    return false;
 }
 
 int main() {
@@ -71,7 +87,10 @@ int main() {
                 for (int i = 0; i < nodes.size(); i++) {
                     if (nodes[i]->getGlobalBounds().contains(mousePos)) {
                         lineEndIdx = i;
-                        connectionData.push_back({nodes[lineStartIdx], nodes[lineEndIdx]});
+                        if (!doesConnectionExist(connectionData, nodes[lineStartIdx], nodes[lineEndIdx])) {
+                            connectionData.push_back({nodes[lineStartIdx], nodes[lineEndIdx]});
+                        }
+
                         lineStartIdx = -1;
                         lineEndIdx = -1;
                         break;

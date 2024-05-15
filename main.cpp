@@ -22,6 +22,15 @@ vector<VertexArray> getConnectionsBetweenNodes(vector<vector<shared_ptr<CircleSh
     return connections;
 }
 
+// calc distance between a line and another point
+float distance(Vector2f v1, Vector2f v2, Vector2f p) {
+    float a = v2.y - v1.y;
+    float b = v1.x - v2.x;
+    float c = (v2.x * v1.y) - (v1.x * v2.y);
+
+    return abs((a * p.x) + (b * p.y) + c) / sqrt((a * a) + (b * b));
+}
+
 // check if connection between 2 nodes exists in either direction
 bool doesConnectionExist(vector<vector<shared_ptr<CircleShape>>> connectionData, shared_ptr<CircleShape> start, shared_ptr<CircleShape> end) {
     vector<shared_ptr<CircleShape>> v = {start, end};
@@ -72,17 +81,18 @@ int main() {
             if (event.type == Event::Closed)
                 window.close();
 
-            // delete something
+            // delete node/connection on shift+left click
             else if (event.type == Event::KeyPressed && event.key.code == Keyboard::LShift) {
                 isShiftPressed = true;
             }
             else if (event.type == Event::KeyReleased && event.key.code == Keyboard::LShift) {
                 isShiftPressed = false;
             }
-            // delete node
             else if (isShiftPressed && Mouse::isButtonPressed(Mouse::Left)) {
                 Vector2f mousePos = Vector2f(Mouse::getPosition(window));
                 if (!(mousePos.x >= 0 && mousePos.x <= window.getSize().x && mousePos.y >= 0 && mousePos.y <= window.getSize().y)) continue;
+
+                // delete node
                 for (int i = 0; i < nodes.size(); i++) {
                     if (nodes[i]->getGlobalBounds().contains(mousePos)) {
                         shared_ptr<CircleShape> removedNode = nodes[i];
@@ -101,6 +111,17 @@ int main() {
                                 ++it;
                             }
                         }
+                    }
+                }
+
+                // delete connection
+                vector<VertexArray> lines = getConnectionsBetweenNodes(connectionData);
+                for (int i=0; i<connectionData.size(); i++) {
+                    VertexArray line = lines[i];
+                    float dist = distance(line[0].position, line[1].position, mousePos);
+                    bool isMouseOver = dist <= 5.0f;
+                    if (isMouseOver) {
+                        connectionData.erase(connectionData.begin()+i);
                     }
                 }
             }

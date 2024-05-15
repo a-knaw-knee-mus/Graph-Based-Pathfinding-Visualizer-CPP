@@ -64,13 +64,48 @@ int main() {
     int currCircle = -1;
     Vector2f offset; // Offset for dragging
     int lineStartIdx=-1;
+    bool isShiftPressed = false;
 
     while (window.isOpen()) {
-        Event event;
+        Event event{};
         while (window.pollEvent(event)) {
             if (event.type == Event::Closed)
                 window.close();
 
+            // delete something
+            else if (event.type == Event::KeyPressed && event.key.code == Keyboard::LShift) {
+                isShiftPressed = true;
+            }
+            else if (event.type == Event::KeyReleased && event.key.code == Keyboard::LShift) {
+                isShiftPressed = false;
+            }
+            // delete node
+            else if (isShiftPressed && Mouse::isButtonPressed(Mouse::Left)) {
+                Vector2f mousePos = Vector2f(Mouse::getPosition(window));
+                if (!(mousePos.x >= 0 && mousePos.x <= window.getSize().x && mousePos.y >= 0 && mousePos.y <= window.getSize().y)) continue;
+                for (int i = 0; i < nodes.size(); i++) {
+                    if (nodes[i]->getGlobalBounds().contains(mousePos)) {
+                        shared_ptr<CircleShape> removedNode = nodes[i];
+                        nodes.erase(nodes.begin()+i);
+                        for (auto it = connectionData.begin(); it != connectionData.end();) {
+                            bool deleteConnection = false;
+                            for (const auto& node : *it) {
+                                if (node == removedNode) { // Compare with the iterator, not nodes[0]
+                                    deleteConnection = true;
+                                    break;
+                                }
+                            }
+                            if (deleteConnection) {
+                                it = connectionData.erase(it);
+                            } else {
+                                ++it;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // add connection
             else if (event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Right) {
                 Vector2f mousePos = Vector2f(Mouse::getPosition(window));
                 if (!(mousePos.x >= 0 && mousePos.x <= window.getSize().x && mousePos.y >= 0 && mousePos.y <= window.getSize().y)) continue;
@@ -96,6 +131,7 @@ int main() {
                 }
             }
 
+            // get current held node
             else if (event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Left) {
                 Vector2f mousePos = Vector2f(Mouse::getPosition(window));
                 if (!(mousePos.x >= 0 && mousePos.x <= window.getSize().x && mousePos.y >= 0 && mousePos.y <= window.getSize().y)) continue;
@@ -109,6 +145,8 @@ int main() {
             else if (currCircle != -1 && event.type == Event::MouseButtonReleased) {
                 currCircle = -1;
             }
+
+            // add new node
             else if (event.type == Event::KeyPressed) {
                 if (event.key.code == Keyboard::A) {
                     // Generate a new circle

@@ -4,26 +4,35 @@
 #include <cmath>
 #include <iostream>
 #include <algorithm>
+#include "include/states.h"
 using namespace sf;
 using namespace std;
-
-struct Connection {
-    shared_ptr<CircleShape> start, end;
-    int weight;
-
-    Connection(const shared_ptr<CircleShape> start, const shared_ptr<CircleShape> end, const int weight=1) : start(start), end(end), weight(weight) {}
-};
 
 // get the line shapes that represent connections between nodes to be drawn to the window
 vector<VertexArray> getConnectionsBetweenNodes(vector<Connection> connectionData) {
     vector<VertexArray> connections;
 
     for (auto& c: connectionData) {
+        Color lineColorStart{}, lineColorEnd{};
+        switch(c.weight) {
+            case 1:
+                lineColorStart = Color::Red;
+                lineColorEnd = Color::Blue;
+                break;
+            case 2:
+                lineColorStart = Color::Green;
+                lineColorEnd = Color::Yellow;
+                break;
+            default:
+                lineColorStart = Color::Red;
+                lineColorEnd = Color::Blue;
+                break;
+        }
         VertexArray line(Lines, 2);
         line[0].position = c.start->getPosition();
-        line[0].color = Color::Red;
+        line[0].color = lineColorStart;
         line[1].position = c.end->getPosition();
-        line[1].color = Color::Blue;
+        line[1].color = lineColorEnd;
         connections.push_back(line);
     }
     return connections;

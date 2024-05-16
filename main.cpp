@@ -8,11 +8,46 @@
 using namespace sf;
 using namespace std;
 
-// get the line shapes that represent connections between nodes to be drawn to the window
-vector<VertexArray> getConnectionsBetweenNodes(vector<Connection> connectionData) {
-    vector<VertexArray> connections;
+void addNode(vector<shared_ptr<Node>>& nodes, const int numNodes, const int circleRadius, RenderWindow& window) {
+    CircleShape newCircle(circleRadius-4);
+    Vector2f newPos;
+    bool positionFound = false;
+    for (float y = circleRadius+10; y < window.getSize().y-circleRadius-10; y += circleRadius * 2) {
+        for (float x = circleRadius+10; x < window.getSize().x-circleRadius-10; x += circleRadius * 2) {
+            newPos = Vector2f(x, y);
+            bool validPosition = true;
+            for (const auto& existingNode : nodes) {
+                float combinedRadius = newCircle.getRadius() + existingNode->node.getRadius();
+                Vector2f centerDiff = newPos - existingNode->node.getPosition();
+                float centerDist = sqrt(centerDiff.x * centerDiff.x + centerDiff.y * centerDiff.y);
+                if (centerDist < (combinedRadius + (circleRadius*0.7))) { // Ensure new circle doesn't overlap or come too close
+                    validPosition = false;
+                    break;
+                }
+            }
+            if (validPosition) {
+                positionFound = true;
+                break;
+            }
+        }
+        if (positionFound) break;
+    }
+    if (positionFound) {
+        newCircle.setPosition(newPos);
+        newCircle.setOutlineColor(Color::Black);
+        newCircle.setOutlineThickness(2);
+        newCircle.setOrigin({ newCircle.getRadius(), newCircle.getRadius() });
+        nodes.push_back(make_shared<Node>(Node(newCircle)));
+    } else {
+        cout << "No possible spot found" << endl;
+    }
+}
 
-    for (auto& c: connectionData) {
+// get the line shapes that represent connections between nodes to be drawn to the window
+vector<RectangleShape> getConnectionsBetweenNodes(vector<Connection> connectionData) {
+    vector<RectangleShape> connections;
+
+    for (auto& c : connectionData) {
         Color lineColorStart{}, lineColorEnd{};
         switch(c.weight) {
             case 1:
@@ -28,11 +63,14 @@ vector<VertexArray> getConnectionsBetweenNodes(vector<Connection> connectionData
                 lineColorEnd = Color::Blue;
                 break;
         }
-        VertexArray line(Lines, 2);
-        line[0].position = c.start->node.getPosition();
-        line[0].color = lineColorStart;
-        line[1].position = c.end->node.getPosition();
-        line[1].color = lineColorEnd;
+        Vector2f startPos = c.start->node.getPosition();
+        Vector2f endPos = c.end->node.getPosition();
+        float distance = sqrt(pow(endPos.x - startPos.x, 2) + pow(endPos.y - startPos.y, 2));
+        RectangleShape line(Vector2f(distance, 1));
+        line.setPosition(startPos);
+        line.setFillColor(Color::Red);
+        float angle = atan2(endPos.y - startPos.y, endPos.x - startPos.x);
+        line.setRotation(angle * 180 / M_PI);
         connections.push_back(line);
     }
     return connections;
@@ -166,12 +204,9 @@ int main() {
                 }
 
                 // delete connection
-                vector<VertexArray> lines = getConnectionsBetweenNodes(connectionData);
+                vector<RectangleShape> lines = getConnectionsBetweenNodes(connectionData);
                 for (int i=0; i<connectionData.size(); i++) {
-                    VertexArray line = lines[i];
-                    float dist = distance(line[0].position, line[1].position, mousePos);
-                    bool isMouseOver = dist <= 5.0f;
-                    if (isMouseOver) {
+                    if (lines[i].getGlobalBounds().contains(mousePos)) {
                         connectionData.erase(connectionData.begin()+i);
                     }
                 }
@@ -215,42 +250,20 @@ int main() {
                 currCircle = -1;
             }
 
+            // generate random graph
+            else if (event.type == Event::KeyReleased) {
+                if (event.key.code == Keyboard::Space) {
+                    nodes.clear();
+                    connectionData.clear();
+                    const int numNodes = 50;
+                }
+            }
+
             // add new node
             else if (event.type == Event::KeyPressed) {
                 if (event.key.code == Keyboard::A) {
                     // Generate a new circle
-                    CircleShape newCircle(circleRadius-4);
-                    Vector2f newPos;
-                    bool positionFound = false;
-                    for (float y = circleRadius+10; y < window.getSize().y-circleRadius-10; y += circleRadius * 2) {
-                        for (float x = circleRadius+10; x < window.getSize().x-circleRadius-10; x += circleRadius * 2) {
-                            newPos = Vector2f(x, y);
-                            bool validPosition = true;
-                            for (const auto& existingNode : nodes) {
-                                float combinedRadius = newCircle.getRadius() + existingNode->node.getRadius();
-                                Vector2f centerDiff = newPos - existingNode->node.getPosition();
-                                float centerDist = sqrt(centerDiff.x * centerDiff.x + centerDiff.y * centerDiff.y);
-                                if (centerDist < (combinedRadius + (circleRadius*0.7))) { // Ensure new circle doesn't overlap or come too close
-                                    validPosition = false;
-                                    break;
-                                }
-                            }
-                            if (validPosition) {
-                                positionFound = true;
-                                break;
-                            }
-                        }
-                        if (positionFound) break;
-                    }
-                    if (positionFound) {
-                        newCircle.setPosition(newPos);
-                        newCircle.setOutlineColor(Color::Black);
-                        newCircle.setOutlineThickness(2);
-                        newCircle.setOrigin({ newCircle.getRadius(), newCircle.getRadius() });
-                        nodes.push_back(make_shared<Node>(Node(newCircle)));
-                    } else {
-                        cout << "No possible spot found" << endl;
-                    }
+                    addNode(nodes, 1, circleRadius, window);
                 }
             }
         }

@@ -8,38 +8,43 @@
 using namespace sf;
 using namespace std;
 
-void addNode(vector<shared_ptr<Node>>& nodes, const int numNodes, const int circleRadius, RenderWindow& window) {
+void addNodes(vector<shared_ptr<Node>>& nodes, const int numNodes, const int circleRadius, RenderWindow& window) {
     CircleShape newCircle(circleRadius-4);
-    Vector2f newPos;
-    bool positionFound = false;
-    for (float y = circleRadius+10; y < window.getSize().y-circleRadius-10; y += circleRadius * 2) {
-        for (float x = circleRadius+10; x < window.getSize().x-circleRadius-10; x += circleRadius * 2) {
-            newPos = Vector2f(x, y);
-            bool validPosition = true;
-            for (const auto& existingNode : nodes) {
-                float combinedRadius = newCircle.getRadius() + existingNode->node.getRadius();
-                Vector2f centerDiff = newPos - existingNode->node.getPosition();
-                float centerDist = sqrt(centerDiff.x * centerDiff.x + centerDiff.y * centerDiff.y);
-                if (centerDist < (combinedRadius + (circleRadius*0.7))) { // Ensure new circle doesn't overlap or come too close
-                    validPosition = false;
+    int nodesGenerated = 0;
+    while (nodesGenerated < numNodes) {
+        Vector2f newPos;
+        bool positionFound = false;
+        for (float y = circleRadius+10; y < window.getSize().y-circleRadius-10; y += circleRadius * 2) {
+            for (float x = circleRadius+10; x < window.getSize().x-circleRadius-10; x += circleRadius * 2) {
+                newPos = Vector2f(x, y);
+                bool validPosition = true;
+                for (const auto& existingNode : nodes) {
+                    float combinedRadius = newCircle.getRadius() + existingNode->node.getRadius();
+                    Vector2f centerDiff = newPos - existingNode->node.getPosition();
+                    float centerDist = sqrt(centerDiff.x * centerDiff.x + centerDiff.y * centerDiff.y);
+                    if (centerDist < (combinedRadius + (circleRadius*0.7))) { // Ensure new circle doesn't overlap or come too close
+                        validPosition = false;
+                        break;
+                    }
+                }
+                if (validPosition) {
+                    positionFound = true;
                     break;
                 }
             }
-            if (validPosition) {
-                positionFound = true;
-                break;
-            }
+            if (positionFound) break;
         }
-        if (positionFound) break;
-    }
-    if (positionFound) {
-        newCircle.setPosition(newPos);
-        newCircle.setOutlineColor(Color::Black);
-        newCircle.setOutlineThickness(2);
-        newCircle.setOrigin({ newCircle.getRadius(), newCircle.getRadius() });
-        nodes.push_back(make_shared<Node>(Node(newCircle)));
-    } else {
-        cout << "No possible spot found" << endl;
+        if (positionFound) {
+            newCircle.setPosition(newPos);
+            newCircle.setOutlineColor(Color::Black);
+            newCircle.setOutlineThickness(2);
+            newCircle.setOrigin({ newCircle.getRadius(), newCircle.getRadius() });
+            nodes.push_back(make_shared<Node>(Node(newCircle)));
+            nodesGenerated += 1;
+        } else {
+            cout << "No possible spot found" << endl;
+            break;
+        }
     }
 }
 
@@ -255,7 +260,7 @@ int main() {
                 if (event.key.code == Keyboard::Space) {
                     nodes.clear();
                     connectionData.clear();
-                    const int numNodes = 50;
+                    addNodes(nodes, 50, circleRadius, window);
                 }
             }
 
@@ -263,7 +268,7 @@ int main() {
             else if (event.type == Event::KeyPressed) {
                 if (event.key.code == Keyboard::A) {
                     // Generate a new circle
-                    addNode(nodes, 1, circleRadius, window);
+                    addNodes(nodes, 1, circleRadius, window);
                 }
             }
         }

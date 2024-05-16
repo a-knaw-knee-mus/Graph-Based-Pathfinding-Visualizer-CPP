@@ -29,9 +29,9 @@ vector<VertexArray> getConnectionsBetweenNodes(vector<Connection> connectionData
                 break;
         }
         VertexArray line(Lines, 2);
-        line[0].position = c.start->getPosition();
+        line[0].position = c.start->node.getPosition();
         line[0].color = lineColorStart;
-        line[1].position = c.end->getPosition();
+        line[1].position = c.end->node.getPosition();
         line[1].color = lineColorEnd;
         connections.push_back(line);
     }
@@ -48,7 +48,7 @@ float distance(Vector2f v1, Vector2f v2, Vector2f p) {
 }
 
 // check if connection between 2 nodes exists in either direction
-bool doesConnectionExist(vector<Connection> connectionData, shared_ptr<CircleShape> start, shared_ptr<CircleShape> end) {
+bool doesConnectionExist(vector<Connection> connectionData, shared_ptr<Node> start, shared_ptr<Node> end) {
     for (const auto& connection : connectionData) {
         if ((connection.start == start && connection.end == end) || (connection.start == end && connection.end == start)) {
             return true;
@@ -63,7 +63,7 @@ int main() {
 
     // Define two circles
     const int circleRadius = 30;
-    vector<shared_ptr<CircleShape>> nodes;
+    vector<shared_ptr<Node>> nodes;
     vector<Connection> connectionData;
 
     CircleShape node1(circleRadius-4);
@@ -71,14 +71,14 @@ int main() {
     node1.setOutlineColor(Color::Black);
     node1.setOutlineThickness(2);
     node1.setOrigin({ node1.getRadius(), node1.getRadius() });
-    nodes.push_back(make_shared<CircleShape>(node1));
+    nodes.push_back(make_shared<Node>(Node(node1)));
 
     CircleShape node2(circleRadius-4);
     node2.setPosition(300, 300);
     node2.setOutlineColor(Color::Black);
     node2.setOutlineThickness(2);
     node2.setOrigin({ node2.getRadius(), node2.getRadius() });
-    nodes.push_back(make_shared<CircleShape>(node2));
+    nodes.push_back(make_shared<Node>(Node(node2)));
 
     connectionData.emplace_back(nodes[0], nodes[1]);
 
@@ -87,8 +87,8 @@ int main() {
     int lineStartIdx=-1;
     bool isShiftPressed = false;
     bool isCtrlPressed = false;
-    shared_ptr<CircleShape> startNode;
-    shared_ptr<CircleShape> endNode;
+    shared_ptr<Node> startNode;
+    shared_ptr<Node> endNode;
 
     while (window.isOpen()) {
         Event event{};
@@ -106,24 +106,30 @@ int main() {
             else if (isShiftPressed && Mouse::isButtonPressed(Mouse::Left)) { // set start node
                 Vector2f mousePos = Vector2f(Mouse::getPosition(window));
                 for (int i = 0; i < nodes.size(); i++) {
-                    if (nodes[i]->getGlobalBounds().contains(mousePos)) {
+                    if (nodes[i]->state == Start) {
+                        nodes[i]->state = Clear;
+                    }
+                    if (nodes[i]->node.getGlobalBounds().contains(mousePos)) {
                         startNode = nodes[i];
+                        nodes[i]->state = Start;
                         if (startNode == endNode) { // override endnode
                             endNode = nullptr;
                         }
-                        break;
                     }
                 }
             }
             else if (isShiftPressed && Mouse::isButtonPressed(Mouse::Right)) { // set end node
                 Vector2f mousePos = Vector2f(Mouse::getPosition(window));
                 for (int i = 0; i < nodes.size(); i++) {
-                    if (nodes[i]->getGlobalBounds().contains(mousePos)) {
+                    if (nodes[i]->state == End) {
+                        nodes[i]->state = Clear;
+                    }
+                    if (nodes[i]->node.getGlobalBounds().contains(mousePos)) {
                         endNode = nodes[i];
+                        nodes[i]->state = End;
                         if (endNode == startNode) { // override startnode
                             startNode = nullptr;
                         }
-                        break;
                     }
                 }
             }
@@ -141,8 +147,8 @@ int main() {
 
                 // delete node
                 for (int i = 0; i < nodes.size(); i++) {
-                    if (nodes[i]->getGlobalBounds().contains(mousePos)) {
-                        shared_ptr<CircleShape> removedNode = nodes[i];
+                    if (nodes[i]->node.getGlobalBounds().contains(mousePos)) {
+                        shared_ptr<Node> removedNode = nodes[i];
                         nodes.erase(nodes.begin() + i);
 
                         // Use a lambda function to check if a connection should be deleted
@@ -171,7 +177,7 @@ int main() {
             else if (event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Right) {
                 Vector2f mousePos = Vector2f(Mouse::getPosition(window));
                 for (int i = 0; i < nodes.size(); i++) {
-                    if (nodes[i]->getGlobalBounds().contains(mousePos)) {
+                    if (nodes[i]->node.getGlobalBounds().contains(mousePos)) {
                         lineStartIdx = i;
                         break;
                     }
@@ -180,7 +186,7 @@ int main() {
             else if (lineStartIdx!=-1 && event.type == Event::MouseButtonReleased && event.mouseButton.button == Mouse::Right) {
                 Vector2f mousePos = Vector2f(Mouse::getPosition(window));
                 for (int lineEndIdx = 0; lineEndIdx < nodes.size(); lineEndIdx++) {
-                    if (nodes[lineEndIdx]->getGlobalBounds().contains(mousePos)) {
+                    if (nodes[lineEndIdx]->node.getGlobalBounds().contains(mousePos)) {
                         if (!doesConnectionExist(connectionData, nodes[lineStartIdx], nodes[lineEndIdx])) {
                             connectionData.emplace_back(nodes[lineStartIdx], nodes[lineEndIdx]);
                         }
@@ -195,8 +201,8 @@ int main() {
             else if (event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Left) {
                 Vector2f mousePos = Vector2f(Mouse::getPosition(window));
                 for (int i = 0; i < nodes.size(); i++) {
-                    if (nodes[i]->getGlobalBounds().contains(mousePos)) {
-                        offset = mousePos - nodes[i]->getPosition();
+                    if (nodes[i]->node.getGlobalBounds().contains(mousePos)) {
+                        offset = mousePos - nodes[i]->node.getPosition();
                         currCircle = i;
                     }
                 }
@@ -217,8 +223,8 @@ int main() {
                             newPos = Vector2f(x, y);
                             bool validPosition = true;
                             for (const auto& existingNode : nodes) {
-                                float combinedRadius = newCircle.getRadius() + existingNode->getRadius();
-                                Vector2f centerDiff = newPos - existingNode->getPosition();
+                                float combinedRadius = newCircle.getRadius() + existingNode->node.getRadius();
+                                Vector2f centerDiff = newPos - existingNode->node.getPosition();
                                 float centerDist = sqrt(centerDiff.x * centerDiff.x + centerDiff.y * centerDiff.y);
                                 if (centerDist < (combinedRadius + (circleRadius*0.7))) { // Ensure new circle doesn't overlap or come too close
                                     validPosition = false;
@@ -237,7 +243,7 @@ int main() {
                         newCircle.setOutlineColor(Color::Black);
                         newCircle.setOutlineThickness(2);
                         newCircle.setOrigin({ newCircle.getRadius(), newCircle.getRadius() });
-                        nodes.push_back(make_shared<CircleShape>(newCircle));
+                        nodes.push_back(make_shared<Node>(Node(newCircle)));
                     } else {
                         cout << "No possible spot found" << endl;
                     }
@@ -256,16 +262,16 @@ int main() {
             for (int i = 0; i < nodes.size(); i++) {
                 if (i == currCircle) continue;
                 Vector2f currCirclePoints = newPos;
-                Vector2f otherCirclePoints = nodes[i]->getPosition();
+                Vector2f otherCirclePoints = nodes[i]->node.getPosition();
                 float distance = sqrt(pow(currCirclePoints.x - otherCirclePoints.x, 2) + pow(currCirclePoints.y - otherCirclePoints.y, 2));
-                if (distance < nodes[currCircle]->getRadius() + nodes[i]->getRadius() + (circleRadius*0.7)) {
+                if (distance < nodes[currCircle]->node.getRadius() + nodes[i]->node.getRadius() + (circleRadius*0.7)) {
                     collisionDetected = true;
                     break;
                 }
             }
 
             if (!collisionDetected) {
-                nodes[currCircle]->setPosition(newPos); // Update position if no collision detected
+                nodes[currCircle]->node.setPosition(newPos); // Update position if no collision detected
             }
         }
 
@@ -274,15 +280,22 @@ int main() {
             window.draw(connection);
         }
         // cout << nodes[0].getPosition().x << " " << nodes[0].getPosition().y << endl;
-        for (auto& circle : nodes) {
-            if (circle == startNode) {
-                circle->setFillColor(Color::Blue);
-            } else if (circle == endNode) {
-                circle->setFillColor(Color::Green);
-            } else {
-                circle->setFillColor(Color::White);
+        for (auto& n : nodes) {
+            switch (n->state) {
+                case Clear:
+                    n->node.setFillColor(Color::White);
+                    break;
+                case Start:
+                    n->node.setFillColor(Color(255, 0, 0));
+                    break;
+                case End:
+                    n->node.setFillColor(Color(255, 128, 0));
+                    break;
+                default:
+                    n->node.setFillColor(Color::White);
+                    break;
             }
-            window.draw(*circle);
+            window.draw(n->node);
         }
         window.display();
     }

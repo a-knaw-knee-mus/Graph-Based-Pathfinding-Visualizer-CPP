@@ -83,7 +83,6 @@ int main() {
     connectionData.emplace_back(nodes[0], nodes[1]);
 
     int currCircle = -1;
-    Vector2f offset; // Offset for dragging
     int lineStartIdx=-1;
     bool isShiftPressed = false;
     bool isCtrlPressed = false;
@@ -149,6 +148,11 @@ int main() {
                 for (int i = 0; i < nodes.size(); i++) {
                     if (nodes[i]->node.getGlobalBounds().contains(mousePos)) {
                         shared_ptr<Node> removedNode = nodes[i];
+                        if (removedNode->state == Start) {
+                            startNode = nullptr;
+                        } else if (removedNode->state == End) {
+                            endNode = nullptr;
+                        }
                         nodes.erase(nodes.begin() + i);
 
                         // Use a lambda function to check if a connection should be deleted
@@ -200,9 +204,9 @@ int main() {
             // get current held node
             else if (event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Left) {
                 Vector2f mousePos = Vector2f(Mouse::getPosition(window));
+                if (mousePos.x < (circleRadius) || mousePos.x > window.getSize().x-circleRadius || mousePos.y < circleRadius || mousePos.y > window.getSize().y-circleRadius) continue;
                 for (int i = 0; i < nodes.size(); i++) {
                     if (nodes[i]->node.getGlobalBounds().contains(mousePos)) {
-                        offset = mousePos - nodes[i]->node.getPosition();
                         currCircle = i;
                     }
                 }
@@ -254,8 +258,9 @@ int main() {
         // Dragging logic
         if (currCircle != -1 && Mouse::isButtonPressed(Mouse::Left)) {
             Vector2f mousePos = Vector2f(Mouse::getPosition(window));
+            if (mousePos.x < (circleRadius) || mousePos.x > window.getSize().x-circleRadius || mousePos.y < circleRadius || mousePos.y > window.getSize().y-circleRadius) continue;
 
-            Vector2f newPos = mousePos - offset; // Calculate potential new position
+            Vector2f newPos = mousePos; // Calculate potential new position
 
             // Check collision before updating position
             bool collisionDetected = false;

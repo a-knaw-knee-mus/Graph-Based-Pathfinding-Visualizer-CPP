@@ -9,6 +9,35 @@
 using namespace sf;
 using namespace std;
 
+vector<ConvexShape> genArrowheads(vector<Connection>& connectionData) {
+    vector<ConvexShape> arrowheads{};
+
+    for (auto& connection: connectionData) {
+        Vector2f point1 = connection.end.get()->node.getPosition();
+        Vector2f point2 = connection.start.get()->node.getPosition();
+
+        // Calculate the angle between point1 and point2
+        float dx = point2.x - point1.x;
+        float dy = point2.y - point1.y;
+        float angle = atan2(dy, dx) * 180 / M_PI; // Convert to degrees
+
+        // Create a convex shape (triangle)
+        sf::ConvexShape triangle;
+        triangle.setPointCount(3);
+        triangle.setPoint(0, sf::Vector2f(0.f, -4.f)); // Top point of the triangle
+        triangle.setPoint(1, sf::Vector2f(-5.f, 9.f)); // Bottom left point
+        triangle.setPoint(2, sf::Vector2f(5.f, 9.f)); // Bottom right point
+        triangle.setOrigin(0.f, -20.f); // Set origin to top point
+        triangle.setPosition(point1); // Set position to point 1
+        triangle.setRotation(angle-90); // Set rotation towards point 2
+        triangle.setFillColor(sf::Color::Black); // Set color (optional)
+
+        arrowheads.push_back(triangle);
+    }
+
+    return arrowheads;
+}
+
 void addNode(vector<shared_ptr<Node>>& nodes, const int circleRadius, RenderWindow& window) {
     CircleShape newCircle(circleRadius-4);
     Vector2f newPos;
@@ -341,7 +370,10 @@ int main() {
         for (const auto& connection: getConnectionsBetweenNodes(connectionData)) {
             window.draw(connection);
         }
-        // cout << nodes[0].getPosition().x << " " << nodes[0].getPosition().y << endl;
+        for (const auto& arrowhead: genArrowheads(connectionData)) {
+            window.draw(arrowhead);
+        }
+
         for (auto& n : nodes) {
             switch (n->state) {
                 case Clear:

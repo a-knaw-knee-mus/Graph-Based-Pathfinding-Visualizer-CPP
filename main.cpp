@@ -4,46 +4,87 @@
 #include <cmath>
 #include <iostream>
 #include <algorithm>
+#include <random>
 #include "include/states.h"
 using namespace sf;
 using namespace std;
 
-void addNodes(vector<shared_ptr<Node>>& nodes, const int numNodes, const int circleRadius, RenderWindow& window) {
+void addNode(vector<shared_ptr<Node>>& nodes, const int circleRadius, RenderWindow& window) {
     CircleShape newCircle(circleRadius-4);
-    int nodesGenerated = 0;
-    while (nodesGenerated < numNodes) {
-        Vector2f newPos;
-        bool positionFound = false;
-        for (float y = circleRadius+10; y < window.getSize().y-circleRadius-10; y += circleRadius * 2) {
-            for (float x = circleRadius+10; x < window.getSize().x-circleRadius-10; x += circleRadius * 2) {
-                newPos = Vector2f(x, y);
-                bool validPosition = true;
-                for (const auto& existingNode : nodes) {
-                    float combinedRadius = newCircle.getRadius() + existingNode->node.getRadius();
-                    Vector2f centerDiff = newPos - existingNode->node.getPosition();
-                    float centerDist = sqrt(centerDiff.x * centerDiff.x + centerDiff.y * centerDiff.y);
-                    if (centerDist < (combinedRadius + (circleRadius*0.7))) { // Ensure new circle doesn't overlap or come too close
-                        validPosition = false;
-                        break;
-                    }
-                }
-                if (validPosition) {
-                    positionFound = true;
+    Vector2f newPos;
+    bool positionFound = false;
+    for (float y = circleRadius+10; y < window.getSize().y-circleRadius-10; y += circleRadius * 2) {
+        for (float x = circleRadius+10; x < window.getSize().x-circleRadius-10; x += circleRadius * 2) {
+            newPos = Vector2f(x, y);
+            bool validPosition = true;
+            for (const auto& existingNode : nodes) {
+                float combinedRadius = newCircle.getRadius() + existingNode->node.getRadius();
+                Vector2f centerDiff = newPos - existingNode->node.getPosition();
+                float centerDist = sqrt(centerDiff.x * centerDiff.x + centerDiff.y * centerDiff.y);
+                if (centerDist < (combinedRadius + (circleRadius*0.7))) { // Ensure new circle doesn't overlap or come too close
+                    validPosition = false;
                     break;
                 }
             }
-            if (positionFound) break;
+            if (validPosition) {
+                positionFound = true;
+                break;
+            }
         }
-        if (positionFound) {
-            newCircle.setPosition(newPos);
+        if (positionFound) break;
+    }
+    if (positionFound) {
+        newCircle.setPosition(newPos);
+        newCircle.setOutlineColor(Color::Black);
+        newCircle.setOutlineThickness(2);
+        newCircle.setOrigin({ newCircle.getRadius(), newCircle.getRadius() });
+        nodes.push_back(make_shared<Node>(Node(newCircle)));
+    } else {
+        cout << "No possible spot found" << endl;
+    }
+}
+
+void genRandomGraph(vector<shared_ptr<Node>>& nodes, vector<Connection>& connectionData, const int circleRadius, RenderWindow& window) {
+    nodes.clear();
+    connectionData.clear();
+
+    // generate nodes
+    CircleShape newCircle(circleRadius-4);
+    const int ratio = 4; // used to space nodes; increase/decrease num nodes; min=2
+    int numRows = window.getSize().x / ((circleRadius*ratio)+(circleRadius*0.7));
+    int numCols = window.getSize().y / ((circleRadius*ratio)+(circleRadius*0.7));
+    vector<vector<shared_ptr<Node>>> nodeGrid; // keep track of added nodes in a grid to add random connections
+    for (int i=0; i<numRows; i++) {
+        nodeGrid.push_back(vector<shared_ptr<Node>>{});
+        for (int j=0; j<numCols; j++) {
+            float x=i*((circleRadius*ratio)+(circleRadius*0.7)) + (circleRadius+10);
+            float y=j*((circleRadius*ratio)+(circleRadius*0.7)) + (circleRadius+10);
+            newCircle.setPosition({x, y});
             newCircle.setOutlineColor(Color::Black);
             newCircle.setOutlineThickness(2);
             newCircle.setOrigin({ newCircle.getRadius(), newCircle.getRadius() });
             nodes.push_back(make_shared<Node>(Node(newCircle)));
-            nodesGenerated += 1;
-        } else {
-            cout << "No possible spot found" << endl;
-            break;
+            nodeGrid[i].push_back(nodes[nodes.size()-1]);
+        }
+    }
+
+    // generate connections between all sibling nodes (including diagonal siblings)
+
+    // Define possible movement directions (right, down, bottomleft, bottomright)
+    constexpr int dx[] = {1, 0, 1};
+    constexpr  int dy[] = {0, 1, 1};
+    for (int row=0; row<nodeGrid.size(); row++) {
+        for (int col=0; col<nodeGrid[0].size(); col++) {
+            for (int neighborId=0; neighborId<3; neighborId++) { // make connection with right, down, and bottom right node from current
+                if (row+dx[neighborId] >= nodeGrid.size()) continue;
+                if (col+dy[neighborId] >= nodeGrid.size()) continue;
+                int direction = rand() % 2; // 0 or 1; from current node or to current node
+                if (direction == 0) {
+                    connectionData.push_back({nodeGrid[row][col], nodeGrid[row+dx[neighborId]][col+dy[neighborId]]});
+                } else {
+                    connectionData.push_back({nodeGrid[row+dx[neighborId]][col+dy[neighborId]], nodeGrid[row][col]});
+                }
+            }
         }
     }
 }
@@ -105,7 +146,7 @@ int main() {
     RenderWindow window(VideoMode(600, 600), "Graph Pathfinding");
 
     // Define two circles
-    const int circleRadius = 30;
+    const int circleRadius = 20;
     vector<shared_ptr<Node>> nodes;
     vector<Connection> connectionData;
 
@@ -258,9 +299,7 @@ int main() {
             // generate random graph
             else if (event.type == Event::KeyReleased) {
                 if (event.key.code == Keyboard::Space) {
-                    nodes.clear();
-                    connectionData.clear();
-                    addNodes(nodes, 50, circleRadius, window);
+                    genRandomGraph(nodes, connectionData, circleRadius, window);
                 }
             }
 
@@ -268,7 +307,7 @@ int main() {
             else if (event.type == Event::KeyPressed) {
                 if (event.key.code == Keyboard::A) {
                     // Generate a new circle
-                    addNodes(nodes, 1, circleRadius, window);
+                    addNode(nodes, circleRadius, window);
                 }
             }
         }

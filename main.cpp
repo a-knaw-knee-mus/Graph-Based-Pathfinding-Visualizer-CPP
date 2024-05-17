@@ -9,6 +9,23 @@
 using namespace sf;
 using namespace std;
 
+Color getEdgeColor(int weight) {
+    switch(weight) {
+        case 1:
+            return Color::Red;
+        case 2:
+            return Color::Blue;
+        case 3:
+            return Color::Green;
+        case 4:
+            return Color::Yellow;
+        case 5:
+            return Color::Cyan;
+        default:
+            return Color::Red;
+    }
+}
+
 void drawArrowheads(vector<Edge>& edgeData, RenderWindow& window) {
     vector<ConvexShape> arrowheads{};
 
@@ -30,7 +47,7 @@ void drawArrowheads(vector<Edge>& edgeData, RenderWindow& window) {
         arrowhead.setOrigin(0.f, -20.f); // Set origin to top point
         arrowhead.setPosition(point1); // Set position to point 1
         arrowhead.setRotation(angle-90); // Set rotation towards point 2
-        arrowhead.setFillColor(Color::Black); // Set color (optional)
+        arrowhead.setFillColor(getEdgeColor(edge.weight));
 
         window.draw(arrowhead);
     }
@@ -141,7 +158,7 @@ vector<RectangleShape> getConnectionsBetweenNodes(vector<Edge> edgeData) {
         float distance = sqrt(pow(endPos.x - startPos.x, 2) + pow(endPos.y - startPos.y, 2));
         RectangleShape line(Vector2f(distance, 1));
         line.setPosition(startPos);
-        line.setFillColor(Color::Red);
+        line.setFillColor(getEdgeColor(e.weight));
         float angle = atan2(endPos.y - startPos.y, endPos.x - startPos.x);
         line.setRotation(angle * 180 / M_PI);
         edges.push_back(line);

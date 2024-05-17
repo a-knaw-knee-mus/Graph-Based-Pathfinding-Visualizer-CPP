@@ -41,9 +41,17 @@ void drawArrowheads(vector<Edge>& edgeData, int nodeRadius, RenderWindow& window
         // Create a convex shape (triangle)
         ConvexShape arrowhead;
         arrowhead.setPointCount(3);
-        arrowhead.setPoint(0, Vector2f(0.f, -24.f+nodeRadius)); // Top point of the triangle
-        arrowhead.setPoint(1, Vector2f(-5.f, -11.f+nodeRadius)); // Bottom left point
-        arrowhead.setPoint(2, Vector2f(5.f, -11.f+nodeRadius)); // Bottom right point
+
+        // set arrowhead size relative to node size
+        float startY = -24.f+nodeRadius;
+        float height = nodeRadius*0.65;
+        if (height < 5) height = 5; // set min arrowhead height
+        float width = nodeRadius*0.5;
+        if (width < 3.85) width = 3.85; // set min arrowhead width
+
+        arrowhead.setPoint(0, Vector2f(0.f, startY)); // Top point of the triangle
+        arrowhead.setPoint(1, Vector2f(-(width/2), startY+height)); // Bottom left point
+        arrowhead.setPoint(2, Vector2f((width/2), startY+height)); // Bottom right point
         arrowhead.setOrigin(0.f, -20.f); // Set origin to top point
         arrowhead.setPosition(point1); // Set position to point 1
         arrowhead.setRotation(angle-90); // Set rotation towards point 2
@@ -190,7 +198,8 @@ int main() {
     RenderWindow window(VideoMode(600, 600), "Graph Pathfinding");
 
     // Define two circles
-    const int nodeRadius = 10;
+    int nodeRadius = 20;
+    if (nodeRadius < 5) nodeRadius = 5; // anything smaller wont render
     vector<shared_ptr<Node>> nodes;
     vector<Edge> edgeData;
 

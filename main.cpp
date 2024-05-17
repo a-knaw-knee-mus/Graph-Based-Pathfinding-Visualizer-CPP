@@ -9,12 +9,12 @@
 using namespace sf;
 using namespace std;
 
-vector<ConvexShape> genArrowheads(vector<Connection>& connectionData) {
+void drawArrowheads(vector<Edge>& edgeData, RenderWindow& window) {
     vector<ConvexShape> arrowheads{};
 
-    for (auto& connection: connectionData) {
-        Vector2f point1 = connection.end.get()->node.getPosition();
-        Vector2f point2 = connection.start.get()->node.getPosition();
+    for (auto& edge: edgeData) {
+        Vector2f point1 = edge.end.get()->node.getPosition();
+        Vector2f point2 = edge.start.get()->node.getPosition();
 
         // Calculate the angle between point1 and point2
         float dx = point2.x - point1.x;
@@ -22,20 +22,18 @@ vector<ConvexShape> genArrowheads(vector<Connection>& connectionData) {
         float angle = atan2(dy, dx) * 180 / M_PI; // Convert to degrees
 
         // Create a convex shape (triangle)
-        sf::ConvexShape triangle;
-        triangle.setPointCount(3);
-        triangle.setPoint(0, sf::Vector2f(0.f, -4.f)); // Top point of the triangle
-        triangle.setPoint(1, sf::Vector2f(-5.f, 9.f)); // Bottom left point
-        triangle.setPoint(2, sf::Vector2f(5.f, 9.f)); // Bottom right point
-        triangle.setOrigin(0.f, -20.f); // Set origin to top point
-        triangle.setPosition(point1); // Set position to point 1
-        triangle.setRotation(angle-90); // Set rotation towards point 2
-        triangle.setFillColor(sf::Color::Black); // Set color (optional)
+        ConvexShape arrowhead;
+        arrowhead.setPointCount(3);
+        arrowhead.setPoint(0, Vector2f(0.f, -4.f)); // Top point of the triangle
+        arrowhead.setPoint(1, Vector2f(-5.f, 9.f)); // Bottom left point
+        arrowhead.setPoint(2, Vector2f(5.f, 9.f)); // Bottom right point
+        arrowhead.setOrigin(0.f, -20.f); // Set origin to top point
+        arrowhead.setPosition(point1); // Set position to point 1
+        arrowhead.setRotation(angle-90); // Set rotation towards point 2
+        arrowhead.setFillColor(Color::Black); // Set color (optional)
 
-        arrowheads.push_back(triangle);
+        window.draw(arrowhead);
     }
-
-    return arrowheads;
 }
 
 void addNode(vector<shared_ptr<Node>>& nodes, const int circleRadius, RenderWindow& window) {
@@ -73,16 +71,16 @@ void addNode(vector<shared_ptr<Node>>& nodes, const int circleRadius, RenderWind
     }
 }
 
-void genRandomGraph(vector<shared_ptr<Node>>& nodes, vector<Connection>& connectionData, const int circleRadius, RenderWindow& window) {
+void genRandomGraph(vector<shared_ptr<Node>>& nodes, vector<Edge>& edgeData, const int circleRadius, RenderWindow& window) {
     nodes.clear();
-    connectionData.clear();
+    edgeData.clear();
 
     // generate nodes
     CircleShape newCircle(circleRadius-4);
     const int ratio = 4; // used to space nodes; increase/decrease num nodes; min=2
     int numRows = window.getSize().x / ((circleRadius*ratio)+(circleRadius*0.7));
     int numCols = window.getSize().y / ((circleRadius*ratio)+(circleRadius*0.7));
-    vector<vector<shared_ptr<Node>>> nodeGrid; // keep track of added nodes in a grid to add random connections
+    vector<vector<shared_ptr<Node>>> nodeGrid; // keep track of added nodes in a grid to add random edges
     for (int i=0; i<numRows; i++) {
         nodeGrid.push_back(vector<shared_ptr<Node>>{});
         for (int j=0; j<numCols; j++) {
@@ -97,34 +95,34 @@ void genRandomGraph(vector<shared_ptr<Node>>& nodes, vector<Connection>& connect
         }
     }
 
-    // generate connections between all sibling nodes (including diagonal siblings)
+    // generate edges between all sibling nodes (including diagonal siblings)
 
     // Define possible movement directions (right, down, bottomleft, bottomright)
     constexpr int dx[] = {1, 0, 1};
     constexpr  int dy[] = {0, 1, 1};
     for (int row=0; row<nodeGrid.size(); row++) {
         for (int col=0; col<nodeGrid[0].size(); col++) {
-            for (int neighborId=0; neighborId<3; neighborId++) { // make connection with right, down, and bottom right node from current
+            for (int neighborId=0; neighborId<3; neighborId++) { // make edge with right, down, and bottom right node from current
                 if (row+dx[neighborId] >= nodeGrid.size()) continue;
                 if (col+dy[neighborId] >= nodeGrid.size()) continue;
                 int direction = rand() % 2; // 0 or 1; from current node or to current node
                 if (direction == 0) {
-                    connectionData.push_back({nodeGrid[row][col], nodeGrid[row+dx[neighborId]][col+dy[neighborId]]});
+                    edgeData.push_back({nodeGrid[row][col], nodeGrid[row+dx[neighborId]][col+dy[neighborId]]});
                 } else {
-                    connectionData.push_back({nodeGrid[row+dx[neighborId]][col+dy[neighborId]], nodeGrid[row][col]});
+                    edgeData.push_back({nodeGrid[row+dx[neighborId]][col+dy[neighborId]], nodeGrid[row][col]});
                 }
             }
         }
     }
 }
 
-// get the line shapes that represent connections between nodes to be drawn to the window
-vector<RectangleShape> getConnectionsBetweenNodes(vector<Connection> connectionData) {
-    vector<RectangleShape> connections;
+// get the line shapes that represent edges between nodes to be drawn to the window
+vector<RectangleShape> getConnectionsBetweenNodes(vector<Edge> edgeData) {
+    vector<RectangleShape> edges;
 
-    for (auto& c : connectionData) {
+    for (auto& e : edgeData) {
         Color lineColorStart{}, lineColorEnd{};
-        switch(c.weight) {
+        switch(e.weight) {
             case 1:
                 lineColorStart = Color::Red;
                 lineColorEnd = Color::Blue;
@@ -138,17 +136,17 @@ vector<RectangleShape> getConnectionsBetweenNodes(vector<Connection> connectionD
                 lineColorEnd = Color::Blue;
                 break;
         }
-        Vector2f startPos = c.start->node.getPosition();
-        Vector2f endPos = c.end->node.getPosition();
+        Vector2f startPos = e.start->node.getPosition();
+        Vector2f endPos = e.end->node.getPosition();
         float distance = sqrt(pow(endPos.x - startPos.x, 2) + pow(endPos.y - startPos.y, 2));
         RectangleShape line(Vector2f(distance, 1));
         line.setPosition(startPos);
         line.setFillColor(Color::Red);
         float angle = atan2(endPos.y - startPos.y, endPos.x - startPos.x);
         line.setRotation(angle * 180 / M_PI);
-        connections.push_back(line);
+        edges.push_back(line);
     }
-    return connections;
+    return edges;
 }
 
 // calc distance between a line and another point
@@ -160,10 +158,10 @@ float distance(Vector2f v1, Vector2f v2, Vector2f p) {
     return abs((a * p.x) + (b * p.y) + c) / sqrt((a * a) + (b * b));
 }
 
-// check if connection between 2 nodes exists in either direction
-bool doesConnectionExist(vector<Connection> connectionData, shared_ptr<Node> start, shared_ptr<Node> end) {
-    for (const auto& connection : connectionData) {
-        if ((connection.start == start && connection.end == end) || (connection.start == end && connection.end == start)) {
+// check if edge between 2 nodes exists in either direction
+bool doesConnectionExist(vector<Edge> edgeData, shared_ptr<Node> start, shared_ptr<Node> end) {
+    for (const auto& edge : edgeData) {
+        if ((edge.start == start && edge.end == end) || (edge.start == end && edge.end == start)) {
             return true;
         }
     }
@@ -177,7 +175,7 @@ int main() {
     // Define two circles
     const int circleRadius = 20;
     vector<shared_ptr<Node>> nodes;
-    vector<Connection> connectionData;
+    vector<Edge> edgeData;
 
     CircleShape node1(circleRadius-4);
     node1.setPosition(100, 100);
@@ -193,7 +191,7 @@ int main() {
     node2.setOrigin({ node2.getRadius(), node2.getRadius() });
     nodes.push_back(make_shared<Node>(Node(node2)));
 
-    connectionData.emplace_back(nodes[0], nodes[1]);
+    edgeData.emplace_back(nodes[0], nodes[1]);
 
     int currCircle = -1;
     int lineStartIdx=-1;
@@ -246,7 +244,7 @@ int main() {
                 }
             }
 
-            // delete node/connection on shift+left click
+            // delete node/edge on shift+left click
             else if (event.type == Event::KeyPressed && event.key.code == Keyboard::LControl) {
                 isCtrlPressed = true;
             }
@@ -268,26 +266,26 @@ int main() {
                         }
                         nodes.erase(nodes.begin() + i);
 
-                        // Use a lambda function to check if a connection should be deleted
-                        auto shouldDeleteConnection = [&](const Connection& connection) {
-                            return connection.start == removedNode || connection.end == removedNode;
+                        // Use a lambda function to check if a edge should be deleted
+                        auto shouldDeleteConnection = [&](const Edge& edge) {
+                            return edge.start == removedNode || edge.end == removedNode;
                         };
 
-                        connectionData.erase(remove_if(connectionData.begin(), connectionData.end(), shouldDeleteConnection), connectionData.end());
-                        break;  // Exit loop after deleting the node and its connections
+                        edgeData.erase(remove_if(edgeData.begin(), edgeData.end(), shouldDeleteConnection), edgeData.end());
+                        break;  // Exit loop after deleting the node and its edges
                     }
                 }
 
-                // delete connection
-                vector<RectangleShape> lines = getConnectionsBetweenNodes(connectionData);
-                for (int i=0; i<connectionData.size(); i++) {
-                    if (lines[i].getGlobalBounds().contains(mousePos)) {
-                        connectionData.erase(connectionData.begin()+i);
+                // delete edge
+                vector<RectangleShape> edges = getConnectionsBetweenNodes(edgeData);
+                for (int i=0; i<edgeData.size(); i++) {
+                    if (edges[i].getGlobalBounds().contains(mousePos)) {
+                        edgeData.erase(edgeData.begin()+i);
                     }
                 }
             }
 
-            // add connection
+            // add edge
             else if (event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Right) {
                 Vector2f mousePos = Vector2f(Mouse::getPosition(window));
                 for (int i = 0; i < nodes.size(); i++) {
@@ -301,8 +299,8 @@ int main() {
                 Vector2f mousePos = Vector2f(Mouse::getPosition(window));
                 for (int lineEndIdx = 0; lineEndIdx < nodes.size(); lineEndIdx++) {
                     if (nodes[lineEndIdx]->node.getGlobalBounds().contains(mousePos)) {
-                        if (!doesConnectionExist(connectionData, nodes[lineStartIdx], nodes[lineEndIdx])) {
-                            connectionData.emplace_back(nodes[lineStartIdx], nodes[lineEndIdx]);
+                        if (!doesConnectionExist(edgeData, nodes[lineStartIdx], nodes[lineEndIdx])) {
+                            edgeData.emplace_back(nodes[lineStartIdx], nodes[lineEndIdx]);
                         }
 
                         lineStartIdx = -1;
@@ -328,7 +326,7 @@ int main() {
             // generate random graph
             else if (event.type == Event::KeyReleased) {
                 if (event.key.code == Keyboard::Space) {
-                    genRandomGraph(nodes, connectionData, circleRadius, window);
+                    genRandomGraph(nodes, edgeData, circleRadius, window);
                 }
             }
 
@@ -367,12 +365,10 @@ int main() {
         }
 
         window.clear(Color::White);
-        for (const auto& connection: getConnectionsBetweenNodes(connectionData)) {
-            window.draw(connection);
+        for (const auto& edge: getConnectionsBetweenNodes(edgeData)) {
+            window.draw(edge);
         }
-        for (const auto& arrowhead: genArrowheads(connectionData)) {
-            window.draw(arrowhead);
-        }
+        drawArrowheads(edgeData, window);
 
         for (auto& n : nodes) {
             switch (n->state) {

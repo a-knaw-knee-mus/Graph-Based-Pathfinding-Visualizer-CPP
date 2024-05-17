@@ -22,10 +22,10 @@ struct Node {
     Node(const CircleShape node, const cellState state=Clear) : node(node), state(state) {}
 };
 
-struct Connection {
+struct Edge {
     shared_ptr<Node> start, end;
     int weight;
 
-    Connection(const shared_ptr<Node> start, const shared_ptr<Node> end, const int weight=1) : start(start), end(end), weight(weight) {}
+    Edge(const shared_ptr<Node> start, const shared_ptr<Node> end, const int weight=1) : start(start), end(end), weight(weight) {}
 };
 

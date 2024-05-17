@@ -26,7 +26,7 @@ Color getEdgeColor(int weight) {
     }
 }
 
-void drawArrowheads(vector<Edge>& edgeData, RenderWindow& window) {
+void drawArrowheads(vector<Edge>& edgeData, int nodeRadius, RenderWindow& window) {
     vector<ConvexShape> arrowheads{};
 
     for (auto& edge: edgeData) {
@@ -41,9 +41,9 @@ void drawArrowheads(vector<Edge>& edgeData, RenderWindow& window) {
         // Create a convex shape (triangle)
         ConvexShape arrowhead;
         arrowhead.setPointCount(3);
-        arrowhead.setPoint(0, Vector2f(0.f, -4.f)); // Top point of the triangle
-        arrowhead.setPoint(1, Vector2f(-5.f, 9.f)); // Bottom left point
-        arrowhead.setPoint(2, Vector2f(5.f, 9.f)); // Bottom right point
+        arrowhead.setPoint(0, Vector2f(0.f, -24.f+nodeRadius)); // Top point of the triangle
+        arrowhead.setPoint(1, Vector2f(-5.f, -11.f+nodeRadius)); // Bottom left point
+        arrowhead.setPoint(2, Vector2f(5.f, -11.f+nodeRadius)); // Bottom right point
         arrowhead.setOrigin(0.f, -20.f); // Set origin to top point
         arrowhead.setPosition(point1); // Set position to point 1
         arrowhead.setRotation(angle-90); // Set rotation towards point 2
@@ -190,18 +190,18 @@ int main() {
     RenderWindow window(VideoMode(600, 600), "Graph Pathfinding");
 
     // Define two circles
-    const int circleRadius = 20;
+    const int nodeRadius = 10;
     vector<shared_ptr<Node>> nodes;
     vector<Edge> edgeData;
 
-    CircleShape node1(circleRadius-4);
+    CircleShape node1(nodeRadius-4);
     node1.setPosition(100, 100);
     node1.setOutlineColor(Color::Black);
     node1.setOutlineThickness(2);
     node1.setOrigin({ node1.getRadius(), node1.getRadius() });
     nodes.push_back(make_shared<Node>(Node(node1)));
 
-    CircleShape node2(circleRadius-4);
+    CircleShape node2(nodeRadius-4);
     node2.setPosition(300, 300);
     node2.setOutlineColor(Color::Black);
     node2.setOutlineThickness(2);
@@ -329,7 +329,7 @@ int main() {
             // get current held node
             else if (event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Left) {
                 Vector2f mousePos = Vector2f(Mouse::getPosition(window));
-                if (mousePos.x < (circleRadius) || mousePos.x > window.getSize().x-circleRadius || mousePos.y < circleRadius || mousePos.y > window.getSize().y-circleRadius) continue;
+                if (mousePos.x < (nodeRadius) || mousePos.x > window.getSize().x-nodeRadius || mousePos.y < nodeRadius || mousePos.y > window.getSize().y-nodeRadius) continue;
                 for (int i = 0; i < nodes.size(); i++) {
                     if (nodes[i]->node.getGlobalBounds().contains(mousePos)) {
                         currCircle = i;
@@ -343,7 +343,7 @@ int main() {
             // generate random graph
             else if (event.type == Event::KeyReleased) {
                 if (event.key.code == Keyboard::Space) {
-                    genRandomGraph(nodes, edgeData, circleRadius, window);
+                    genRandomGraph(nodes, edgeData, nodeRadius, window);
                 }
             }
 
@@ -351,7 +351,7 @@ int main() {
             else if (event.type == Event::KeyPressed) {
                 if (event.key.code == Keyboard::A) {
                     // Generate a new circle
-                    addNode(nodes, circleRadius, window);
+                    addNode(nodes, nodeRadius, window);
                 }
             }
         }
@@ -359,7 +359,7 @@ int main() {
         // Dragging logic
         if (currCircle != -1 && Mouse::isButtonPressed(Mouse::Left)) {
             Vector2f mousePos = Vector2f(Mouse::getPosition(window));
-            if (mousePos.x < (circleRadius) || mousePos.x > window.getSize().x-circleRadius || mousePos.y < circleRadius || mousePos.y > window.getSize().y-circleRadius) continue;
+            if (mousePos.x < (nodeRadius) || mousePos.x > window.getSize().x-nodeRadius || mousePos.y < nodeRadius || mousePos.y > window.getSize().y-nodeRadius) continue;
 
             Vector2f newPos = mousePos; // Calculate potential new position
 
@@ -370,7 +370,7 @@ int main() {
                 Vector2f currCirclePoints = newPos;
                 Vector2f otherCirclePoints = nodes[i]->node.getPosition();
                 float distance = sqrt(pow(currCirclePoints.x - otherCirclePoints.x, 2) + pow(currCirclePoints.y - otherCirclePoints.y, 2));
-                if (distance < nodes[currCircle]->node.getRadius() + nodes[i]->node.getRadius() + (circleRadius*0.7)) {
+                if (distance < nodes[currCircle]->node.getRadius() + nodes[i]->node.getRadius() + (nodeRadius*0.7)) {
                     collisionDetected = true;
                     break;
                 }
@@ -385,7 +385,7 @@ int main() {
         for (const auto& edge: getConnectionsBetweenNodes(edgeData)) {
             window.draw(edge);
         }
-        drawArrowheads(edgeData, window);
+        drawArrowheads(edgeData, nodeRadius, window);
 
         for (auto& n : nodes) {
             switch (n->state) {

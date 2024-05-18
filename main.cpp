@@ -108,8 +108,8 @@ void genRandomGraph(vector<shared_ptr<Node>>& nodes, unordered_map<shared_ptr<No
     // generate nodes
     CircleShape newCircle(circleRadius-4);
     const int ratio = 4; // used to space nodes; increase/decrease num nodes; min=2
-    int numRows = window.getSize().x / ((circleRadius*ratio)+(circleRadius*0.7));
-    int numCols = window.getSize().y / ((circleRadius*ratio)+(circleRadius*0.7));
+    const int numRows = window.getSize().x / ((circleRadius*ratio)+(circleRadius*0.7));
+    const int numCols = window.getSize().y / ((circleRadius*ratio)+(circleRadius*0.7));
     vector<vector<shared_ptr<Node>>> nodeGrid; // keep track of added nodes in a grid to add random edges
     for (int i=0; i<numRows; i++) {
         nodeGrid.push_back(vector<shared_ptr<Node>>{});
@@ -125,11 +125,9 @@ void genRandomGraph(vector<shared_ptr<Node>>& nodes, unordered_map<shared_ptr<No
         }
     }
 
-    // generate edges between all sibling nodes (including diagonal siblings)
-
     // Define possible movement directions (right, down, bottomleft, bottomright)
     constexpr int dx[] = {1, 0, 1};
-    constexpr  int dy[] = {0, 1, 1};
+    constexpr int dy[] = {0, 1, 1};
     for (int row=0; row<nodeGrid.size(); row++) {
         for (int col=0; col<nodeGrid[0].size(); col++) {
             for (int neighborId=0; neighborId<3; neighborId++) { // make edge with right, down, and bottom right node from current
@@ -138,35 +136,12 @@ void genRandomGraph(vector<shared_ptr<Node>>& nodes, unordered_map<shared_ptr<No
                 int direction = rand() % 2; // 0 or 1; from current node or to current node
                 if (direction == 0) {
                     edgeData[nodeGrid[row][col]].emplace_back(nodeGrid[row+dx[neighborId]][col+dy[neighborId]], 1);
-                    //edgeData.push_back({nodeGrid[row][col], nodeGrid[row+dx[neighborId]][col+dy[neighborId]]});
                 } else {
-                    //edgeData.push_back({nodeGrid[row+dx[neighborId]][col+dy[neighborId]], nodeGrid[row][col]});
                     edgeData[nodeGrid[row+dx[neighborId]][col+dy[neighborId]]].emplace_back(nodeGrid[row][col], 1);
                 }
             }
         }
     }
-}
-
-// get the line shapes that represent edges between nodes to be drawn to the window
-vector<RectangleShape> getConnectionsBetweenNodes(unordered_map<shared_ptr<Node>, vector<pair<shared_ptr<Node>, int>>, NodePtrHash, NodePtrEqual>& edgeData) {
-    vector<RectangleShape> edgeShapes;
-
-    for (auto& [node, currNodeEdges] : edgeData) {
-        for (auto& e: currNodeEdges) {
-            // e.first=node connect to; e.second=edge weight
-            Vector2f startPos = node->node.getPosition();
-            Vector2f endPos = e.first->node.getPosition();
-            float distance = sqrt(pow(endPos.x - startPos.x, 2) + pow(endPos.y - startPos.y, 2));
-            RectangleShape line(Vector2f(distance, 1));
-            line.setPosition(startPos);
-            line.setFillColor(getEdgeColor(e.second));
-            float angle = atan2(endPos.y - startPos.y, endPos.x - startPos.x);
-            line.setRotation(angle * 180 / M_PI);
-            edgeShapes.push_back(line);
-        }
-    }
-    return edgeShapes;
 }
 
 RectangleShape getShapeForEdge(const shared_ptr<Node>& startNode, shared_ptr<Node>& endNode, int weight) {
@@ -190,12 +165,11 @@ float distance(Vector2f v1, Vector2f v2, Vector2f p) {
     return abs((a * p.x) + (b * p.y) + c) / sqrt((a * a) + (b * b));
 }
 
-// check if edge between 2 nodes exists in either direction
+// check if edge between start and end node exists
 bool doesConnectionExist(unordered_map<shared_ptr<Node>, vector<pair<shared_ptr<Node>, int>>, NodePtrHash, NodePtrEqual>& edgeData, shared_ptr<Node>& start, shared_ptr<Node>& end) {
     for (const auto& edge : edgeData[start]) {
-        if (edge.first == start) return true;
+        if (edge.first == end) return true;
     }
-
     return false;
 }
 
@@ -209,6 +183,7 @@ int main() {
     //vector<Edge> edgeData;
     unordered_map<shared_ptr<Node>, vector<pair<shared_ptr<Node>, int>>, NodePtrHash, NodePtrEqual> edgeData;
 
+    // set 2 default nodes with 1 edge
     CircleShape node1(nodeRadius-4);
     node1.setPosition(100, 100);
     node1.setOutlineColor(Color::Black);
@@ -223,7 +198,7 @@ int main() {
     node2.setOrigin({ node2.getRadius(), node2.getRadius() });
     nodes.push_back(make_shared<Node>(Node(node2)));
 
-    edgeData[nodes[0]].emplace_back(nodes[1], 1);
+    edgeData[nodes[0]].emplace_back(nodes[1], 1); // edge from node1 to node2
 
     int currCircle = -1;
     int lineStartIdx=-1;
@@ -390,7 +365,6 @@ int main() {
             // add new node
             else if (event.type == Event::KeyPressed) {
                 if (event.key.code == Keyboard::A) {
-                    // Generate a new circle
                     addNode(nodes, nodeRadius, window);
                 }
             }
@@ -422,6 +396,8 @@ int main() {
         }
 
         window.clear(Color::White);
+
+        // draw edges
         for (auto& [node, currNodeEdges] : edgeData) {
             for (auto& e: currNodeEdges) {
                 RectangleShape edgeShape = getShapeForEdge(node, e.first, e.second);
@@ -429,8 +405,10 @@ int main() {
             }
         }
 
+        // draw arrowheads to show edge direction
         drawArrowheads(edgeData, nodeRadius, window);
 
+        // draw nodes
         for (auto& n : nodes) {
             switch (n->state) {
                 case Clear:

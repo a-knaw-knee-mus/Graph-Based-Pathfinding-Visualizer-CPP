@@ -8,43 +8,10 @@
 #include <algorithm>
 #include <random>
 #include "include/states.h"
+#include "include/pathfinding.h"
+#include "include/window.h"
 using namespace sf;
 using namespace std;
-
-void drawNodes(vector<shared_ptr<Node>> nodes, RenderWindow& window) {
-    for (auto& n : nodes) {
-        switch (n->state) {
-            case Clear:
-                n->node.setFillColor(Color::White);
-            break;
-            case Start:
-                n->node.setFillColor(Color(255, 0, 0));
-            break;
-            case End:
-                n->node.setFillColor(Color(255, 128, 0));
-            break;
-            case Visited:
-                n->node.setFillColor(Color(175, 238, 238));
-            break;
-            case Path:
-                n->node.setFillColor(Color(204, 153, 255));
-            break;
-            case InQueue:
-                n->node.setFillColor(Color(152, 251, 152));
-            break;
-            case CurrentNode:
-                n->node.setFillColor(Color(178, 102, 255));
-            break;
-            case VisitedNoPath:
-                n->node.setFillColor(Color(192, 192, 192));
-            break;
-            default:
-                n->node.setFillColor(Color::White);
-            break;
-        }
-        window.draw(n->node);
-    }
-}
 
 Color getEdgeColor(int weight) {
     switch(weight) {
@@ -249,6 +216,13 @@ int main() {
             if (event.type == Event::Closed)
                 window.close();
 
+            // begin search
+            else if (event.type == Event::KeyReleased && event.key.code == Keyboard::Enter) {
+                if (startNode == nullptr) continue;
+                if (endNode == nullptr) continue;
+                findDijkstraPath(nodes, edgeData, window, startNode, endNode);
+            }
+
             // add start/end node
             else if (event.type == Event::KeyPressed && event.key.code == Keyboard::LShift) {
                 isShiftPressed = true;
@@ -368,7 +342,7 @@ int main() {
                     if (lineStartIdx == lineEndIdx) continue; // cant make a self edge
                     if (nodes[lineEndIdx]->node.getGlobalBounds().contains(mousePos)) {
                         if (!doesConnectionExist(edgeData, nodes[lineStartIdx], nodes[lineEndIdx])) {
-                            edgeData[nodes[lineStartIdx]].emplace_back(nodes[lineEndIdx], 1);
+                            edgeData[nodes[lineStartIdx]].emplace_back(nodes[lineEndIdx], 2);
                         }
 
                         lineStartIdx = -1;

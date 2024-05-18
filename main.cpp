@@ -22,62 +22,6 @@ void resetPathfinding(vector<shared_ptr<Node>> nodes) {
     }
 }
 
-Color getEdgeColor(int weight) {
-    switch(weight) {
-        case 1:
-            return Color::Red;
-        case 2:
-            return Color::Blue;
-        case 3:
-            return Color::Green;
-        case 4:
-            return Color::Yellow;
-        case 5:
-            return Color::Cyan;
-        default:
-            return Color::Red;
-    }
-}
-
-// draw arrowheads to show edge direction
-void drawArrowheads(unordered_map<shared_ptr<Node>, vector<pair<shared_ptr<Node>, int>>, NodePtrHash, NodePtrEqual>& edgeData, int nodeRadius, RenderWindow& window) {
-    vector<ConvexShape> arrowheads{};
-
-    for (auto& [node, currNodeEdges] : edgeData) {
-        int i = 0;
-        for (auto& e: currNodeEdges) {
-            Vector2f point1 = e.first.get()->node.getPosition();
-            Vector2f point2 = node.get()->node.getPosition();
-
-            // Calculate the angle between point1 and point2
-            float dx = point2.x - point1.x;
-            float dy = point2.y - point1.y;
-            float angle = atan2(dy, dx) * 180 / M_PI; // Convert to degrees
-
-            // Create a convex shape (triangle)
-            ConvexShape arrowhead;
-            arrowhead.setPointCount(3);
-
-            // set arrowhead size relative to node size
-            float startY = -24.f+nodeRadius;
-            float height = nodeRadius*0.65;
-            if (height < 5) height = 5; // set min arrowhead height
-            float width = nodeRadius*0.5;
-            if (width < 3.85) width = 3.85; // set min arrowhead width
-
-            arrowhead.setPoint(0, Vector2f(0.f, startY)); // Top point of the triangle
-            arrowhead.setPoint(1, Vector2f(-(width/2), startY+height)); // Bottom left point
-            arrowhead.setPoint(2, Vector2f((width/2), startY+height)); // Bottom right point
-            arrowhead.setOrigin(0.f, -20.f); // Set origin to top point
-            arrowhead.setPosition(point1); // Set position to point 1
-            arrowhead.setRotation(angle-90); // Set rotation towards point 2
-            arrowhead.setFillColor(getEdgeColor(e.second));
-
-            window.draw(arrowhead);
-        }
-    }
-}
-
 void addNode(vector<shared_ptr<Node>>& nodes, const int circleRadius, RenderWindow& window) {
     CircleShape newCircle(circleRadius-4);
     Vector2f newPos;
@@ -154,18 +98,6 @@ void genRandomGraph(vector<shared_ptr<Node>>& nodes, unordered_map<shared_ptr<No
             }
         }
     }
-}
-
-RectangleShape getShapeForEdge(const shared_ptr<Node>& startNode, shared_ptr<Node>& endNode, int weight) {
-    Vector2f startPos = startNode.get()->node.getPosition();
-    Vector2f endPos = endNode.get()->node.getPosition();
-    float distance = sqrt(pow(endPos.x - startPos.x, 2) + pow(endPos.y - startPos.y, 2));
-    RectangleShape line(Vector2f(distance, 1));
-    line.setPosition(startPos);
-    line.setFillColor(getEdgeColor(weight));
-    float angle = atan2(endPos.y - startPos.y, endPos.x - startPos.x);
-    line.setRotation(angle * 180 / M_PI);
-    return line;
 }
 
 // calc distance between a line and another point
@@ -422,19 +354,7 @@ int main() {
             }
         }
 
-        window.clear(Color::White);
-
-        // draw edges
-        for (auto& [node, currNodeEdges] : edgeData) {
-            for (auto& e: currNodeEdges) {
-                RectangleShape edgeShape = getShapeForEdge(node, e.first, e.second);
-                window.draw(edgeShape);
-            }
-        }
-        drawArrowheads(edgeData, nodeRadius, window);
-        drawNodes(nodes, window);
-
-        window.display();
+        refreshScreen(nodes, edgeData, window);
     }
 
     return 0;

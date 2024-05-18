@@ -6,6 +6,7 @@
 #include <queue>
 #include <SFML/Graphics.hpp>
 #include "states.h"
+#include "window.h"
 using namespace std;
 using namespace sf;
 

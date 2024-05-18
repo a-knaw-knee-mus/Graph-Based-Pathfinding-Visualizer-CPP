@@ -66,9 +66,9 @@ void drawArrowheads(const unordered_map<shared_ptr<Node>, vector<pair<shared_ptr
     for (auto& [node, currNodeEdges] : edgeData) {
         int i = 0;
         for (auto& e: currNodeEdges) {
-            Vector2f point1 = e.first.get()->node.getPosition();
-            Vector2f point2 = node.get()->node.getPosition();
-            const int nodeRadius = e.first.get()->node.getRadius() + 4; // +4 for border
+            Vector2f point1 = e.first->node.getPosition();
+            Vector2f point2 = node->node.getPosition();
+            const int nodeRadius = e.first->node.getRadius() + 4; // +4 for border
 
             // Calculate the angle between point1 and point2
             float dx = point2.x - point1.x;
@@ -100,8 +100,8 @@ void drawArrowheads(const unordered_map<shared_ptr<Node>, vector<pair<shared_ptr
 }
 
 RectangleShape getShapeForEdge(const shared_ptr<Node>& startNode, const shared_ptr<Node>& endNode, int weight) {
-    Vector2f startPos = startNode.get()->node.getPosition();
-    Vector2f endPos = endNode.get()->node.getPosition();
+    Vector2f startPos = startNode->node.getPosition();
+    Vector2f endPos = endNode->node.getPosition();
     float distance = sqrt(pow(endPos.x - startPos.x, 2) + pow(endPos.y - startPos.y, 2));
     RectangleShape line(Vector2f(distance, 1));
     line.setPosition(startPos);

@@ -7,8 +7,15 @@
 #include <SFML/Graphics.hpp>
 #include "states.h"
 #include "window.h"
+#include <chrono>
+#include <thread>
 using namespace std;
 using namespace sf;
+
+bool isStartOrEnd(const shared_ptr<Node>& node, const shared_ptr<Node>& start, const shared_ptr<Node>& end) {
+    if (node == start || node == end) return true;
+    return false;
+}
 
 void findDijkstraPath(vector<shared_ptr<Node>>& nodes, const unordered_map<shared_ptr<Node>, vector<pair<shared_ptr<Node>, int>>, NodePtrHash, NodePtrEqual>& edgeData, RenderWindow& window, const shared_ptr<Node>& startNode, const shared_ptr<Node>& endNode) {
     unordered_map<shared_ptr<Node>, int, NodePtrHash, NodePtrEqual> distances;
@@ -25,15 +32,17 @@ void findDijkstraPath(vector<shared_ptr<Node>>& nodes, const unordered_map<share
     pq.push(startNode);
 
     bool pathFound = false;
+    chrono::milliseconds duration(0);
 
     while (!pq.empty()) {
         shared_ptr<Node> currentNode = pq.top();
         pq.pop();
-
-        if (currentNode == endNode) {
-            pathFound = true;
-            break;
+        if (!isStartOrEnd(currentNode, startNode, endNode)) {
+            currentNode->state = CurrentNode;
+            this_thread::sleep_for(duration);
+            refreshScreen(nodes, edgeData, window);
         }
+
         for (const auto& neighbor: edgeData.at(currentNode)) {
             shared_ptr<Node> neighborNode = neighbor.first;
             int weight = neighbor.second;
@@ -42,8 +51,24 @@ void findDijkstraPath(vector<shared_ptr<Node>>& nodes, const unordered_map<share
             if (newDist < distances[neighborNode]) {
                 distances[neighborNode] = newDist;
                 previous[neighborNode] = currentNode;
+                if (!isStartOrEnd(neighborNode, startNode, endNode)) {
+                    neighborNode->state = InQueue;
+                    this_thread::sleep_for(duration);
+                    refreshScreen(nodes, edgeData, window);
+                }
                 pq.push(neighborNode);
             }
+        }
+
+        if (!isStartOrEnd(currentNode, startNode, endNode)) {
+            currentNode->state = Visited;
+            this_thread::sleep_for(duration);
+            refreshScreen(nodes, edgeData, window);
+        }
+
+        if (currentNode == endNode) {
+            pathFound = true;
+            break;
         }
     }
 
@@ -54,9 +79,12 @@ void findDijkstraPath(vector<shared_ptr<Node>>& nodes, const unordered_map<share
     reverse(path.begin(), path.end());
 
     for (const auto& n: path) {
-        if (n == startNode) continue;
-        if (n == endNode) continue;
-        n->state = Path;
+        if (!isStartOrEnd(n, startNode, endNode)) {
+            n->state = Path;
+            chrono::milliseconds duration(50);
+            this_thread::sleep_for(duration);
+            refreshScreen(nodes, edgeData, window);
+        }
     }
 
     if (pathFound) {

@@ -1,5 +1,7 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
+#include <unordered_map>
+#include <utility>
 #include <memory>
 #include <cmath>
 #include <iostream>
@@ -26,38 +28,41 @@ Color getEdgeColor(int weight) {
     }
 }
 
-void drawArrowheads(vector<Edge>& edgeData, int nodeRadius, RenderWindow& window) {
+void drawArrowheads(unordered_map<shared_ptr<Node>, vector<pair<shared_ptr<Node>, int>>, NodePtrHash, NodePtrEqual>& edgeData, int nodeRadius, RenderWindow& window) {
     vector<ConvexShape> arrowheads{};
 
-    for (auto& edge: edgeData) {
-        Vector2f point1 = edge.end.get()->node.getPosition();
-        Vector2f point2 = edge.start.get()->node.getPosition();
+    for (auto& [node, currNodeEdges] : edgeData) {
+        int i = 0;
+        for (auto& e: currNodeEdges) {
+            Vector2f point1 = e.first.get()->node.getPosition();
+            Vector2f point2 = node.get()->node.getPosition();
 
-        // Calculate the angle between point1 and point2
-        float dx = point2.x - point1.x;
-        float dy = point2.y - point1.y;
-        float angle = atan2(dy, dx) * 180 / M_PI; // Convert to degrees
+            // Calculate the angle between point1 and point2
+            float dx = point2.x - point1.x;
+            float dy = point2.y - point1.y;
+            float angle = atan2(dy, dx) * 180 / M_PI; // Convert to degrees
 
-        // Create a convex shape (triangle)
-        ConvexShape arrowhead;
-        arrowhead.setPointCount(3);
+            // Create a convex shape (triangle)
+            ConvexShape arrowhead;
+            arrowhead.setPointCount(3);
 
-        // set arrowhead size relative to node size
-        float startY = -24.f+nodeRadius;
-        float height = nodeRadius*0.65;
-        if (height < 5) height = 5; // set min arrowhead height
-        float width = nodeRadius*0.5;
-        if (width < 3.85) width = 3.85; // set min arrowhead width
+            // set arrowhead size relative to node size
+            float startY = -24.f+nodeRadius;
+            float height = nodeRadius*0.65;
+            if (height < 5) height = 5; // set min arrowhead height
+            float width = nodeRadius*0.5;
+            if (width < 3.85) width = 3.85; // set min arrowhead width
 
-        arrowhead.setPoint(0, Vector2f(0.f, startY)); // Top point of the triangle
-        arrowhead.setPoint(1, Vector2f(-(width/2), startY+height)); // Bottom left point
-        arrowhead.setPoint(2, Vector2f((width/2), startY+height)); // Bottom right point
-        arrowhead.setOrigin(0.f, -20.f); // Set origin to top point
-        arrowhead.setPosition(point1); // Set position to point 1
-        arrowhead.setRotation(angle-90); // Set rotation towards point 2
-        arrowhead.setFillColor(getEdgeColor(edge.weight));
+            arrowhead.setPoint(0, Vector2f(0.f, startY)); // Top point of the triangle
+            arrowhead.setPoint(1, Vector2f(-(width/2), startY+height)); // Bottom left point
+            arrowhead.setPoint(2, Vector2f((width/2), startY+height)); // Bottom right point
+            arrowhead.setOrigin(0.f, -20.f); // Set origin to top point
+            arrowhead.setPosition(point1); // Set position to point 1
+            arrowhead.setRotation(angle-90); // Set rotation towards point 2
+            arrowhead.setFillColor(getEdgeColor(e.second));
 
-        window.draw(arrowhead);
+            window.draw(arrowhead);
+        }
     }
 }
 
@@ -96,7 +101,7 @@ void addNode(vector<shared_ptr<Node>>& nodes, const int circleRadius, RenderWind
     }
 }
 
-void genRandomGraph(vector<shared_ptr<Node>>& nodes, vector<Edge>& edgeData, const int circleRadius, RenderWindow& window) {
+void genRandomGraph(vector<shared_ptr<Node>>& nodes, unordered_map<shared_ptr<Node>, vector<pair<shared_ptr<Node>, int>>, NodePtrHash, NodePtrEqual>& edgeData, const int circleRadius, RenderWindow& window) {
     nodes.clear();
     edgeData.clear();
 
@@ -132,9 +137,11 @@ void genRandomGraph(vector<shared_ptr<Node>>& nodes, vector<Edge>& edgeData, con
                 if (col+dy[neighborId] >= nodeGrid.size()) continue;
                 int direction = rand() % 2; // 0 or 1; from current node or to current node
                 if (direction == 0) {
-                    edgeData.push_back({nodeGrid[row][col], nodeGrid[row+dx[neighborId]][col+dy[neighborId]]});
+                    edgeData[nodeGrid[row][col]].emplace_back(nodeGrid[row+dx[neighborId]][col+dy[neighborId]], 1);
+                    //edgeData.push_back({nodeGrid[row][col], nodeGrid[row+dx[neighborId]][col+dy[neighborId]]});
                 } else {
-                    edgeData.push_back({nodeGrid[row+dx[neighborId]][col+dy[neighborId]], nodeGrid[row][col]});
+                    //edgeData.push_back({nodeGrid[row+dx[neighborId]][col+dy[neighborId]], nodeGrid[row][col]});
+                    edgeData[nodeGrid[row+dx[neighborId]][col+dy[neighborId]]].emplace_back(nodeGrid[row][col], 1);
                 }
             }
         }
@@ -142,36 +149,36 @@ void genRandomGraph(vector<shared_ptr<Node>>& nodes, vector<Edge>& edgeData, con
 }
 
 // get the line shapes that represent edges between nodes to be drawn to the window
-vector<RectangleShape> getConnectionsBetweenNodes(vector<Edge> edgeData) {
-    vector<RectangleShape> edges;
+vector<RectangleShape> getConnectionsBetweenNodes(unordered_map<shared_ptr<Node>, vector<pair<shared_ptr<Node>, int>>, NodePtrHash, NodePtrEqual>& edgeData) {
+    vector<RectangleShape> edgeShapes;
 
-    for (auto& e : edgeData) {
-        Color lineColorStart{}, lineColorEnd{};
-        switch(e.weight) {
-            case 1:
-                lineColorStart = Color::Red;
-                lineColorEnd = Color::Blue;
-                break;
-            case 2:
-                lineColorStart = Color::Green;
-                lineColorEnd = Color::Yellow;
-                break;
-            default:
-                lineColorStart = Color::Red;
-                lineColorEnd = Color::Blue;
-                break;
+    for (auto& [node, currNodeEdges] : edgeData) {
+        for (auto& e: currNodeEdges) {
+            // e.first=node connect to; e.second=edge weight
+            Vector2f startPos = node->node.getPosition();
+            Vector2f endPos = e.first->node.getPosition();
+            float distance = sqrt(pow(endPos.x - startPos.x, 2) + pow(endPos.y - startPos.y, 2));
+            RectangleShape line(Vector2f(distance, 1));
+            line.setPosition(startPos);
+            line.setFillColor(getEdgeColor(e.second));
+            float angle = atan2(endPos.y - startPos.y, endPos.x - startPos.x);
+            line.setRotation(angle * 180 / M_PI);
+            edgeShapes.push_back(line);
         }
-        Vector2f startPos = e.start->node.getPosition();
-        Vector2f endPos = e.end->node.getPosition();
-        float distance = sqrt(pow(endPos.x - startPos.x, 2) + pow(endPos.y - startPos.y, 2));
-        RectangleShape line(Vector2f(distance, 1));
-        line.setPosition(startPos);
-        line.setFillColor(getEdgeColor(e.weight));
-        float angle = atan2(endPos.y - startPos.y, endPos.x - startPos.x);
-        line.setRotation(angle * 180 / M_PI);
-        edges.push_back(line);
     }
-    return edges;
+    return edgeShapes;
+}
+
+RectangleShape getShapeForEdge(const shared_ptr<Node>& startNode, shared_ptr<Node>& endNode, int weight) {
+    Vector2f startPos = startNode.get()->node.getPosition();
+    Vector2f endPos = endNode.get()->node.getPosition();
+    float distance = sqrt(pow(endPos.x - startPos.x, 2) + pow(endPos.y - startPos.y, 2));
+    RectangleShape line(Vector2f(distance, 1));
+    line.setPosition(startPos);
+    line.setFillColor(getEdgeColor(weight));
+    float angle = atan2(endPos.y - startPos.y, endPos.x - startPos.x);
+    line.setRotation(angle * 180 / M_PI);
+    return line;
 }
 
 // calc distance between a line and another point
@@ -184,11 +191,9 @@ float distance(Vector2f v1, Vector2f v2, Vector2f p) {
 }
 
 // check if edge between 2 nodes exists in either direction
-bool doesConnectionExist(vector<Edge> edgeData, shared_ptr<Node> start, shared_ptr<Node> end) {
-    for (const auto& edge : edgeData) {
-        if ((edge.start == start && edge.end == end) || (edge.start == end && edge.end == start)) {
-            return true;
-        }
+bool doesConnectionExist(unordered_map<shared_ptr<Node>, vector<pair<shared_ptr<Node>, int>>, NodePtrHash, NodePtrEqual>& edgeData, shared_ptr<Node>& start, shared_ptr<Node>& end) {
+    for (const auto& edge : edgeData[start]) {
+        if (edge.first == start) return true;
     }
 
     return false;
@@ -201,7 +206,8 @@ int main() {
     int nodeRadius = 20;
     if (nodeRadius < 5) nodeRadius = 5; // anything smaller wont render
     vector<shared_ptr<Node>> nodes;
-    vector<Edge> edgeData;
+    //vector<Edge> edgeData;
+    unordered_map<shared_ptr<Node>, vector<pair<shared_ptr<Node>, int>>, NodePtrHash, NodePtrEqual> edgeData;
 
     CircleShape node1(nodeRadius-4);
     node1.setPosition(100, 100);
@@ -217,7 +223,7 @@ int main() {
     node2.setOrigin({ node2.getRadius(), node2.getRadius() });
     nodes.push_back(make_shared<Node>(Node(node2)));
 
-    edgeData.emplace_back(nodes[0], nodes[1]);
+    edgeData[nodes[0]].emplace_back(nodes[1], 1);
 
     int currCircle = -1;
     int lineStartIdx=-1;
@@ -290,23 +296,47 @@ int main() {
                         } else if (removedNode->state == End) {
                             endNode = nullptr;
                         }
+
+                        // delete edges going to this node
+                        for (auto& [node, currNodeEdges] : edgeData) {
+                            int j = 0;
+                            for (auto& e: currNodeEdges) {
+                                if (e.first == removedNode) {
+                                    edgeData[node].erase(edgeData[node].begin()+j);
+                                }
+                                j++;
+                            }
+                        }
+                        edgeData.erase(nodes[i]); // delete edges coming from this node
                         nodes.erase(nodes.begin() + i);
-
-                        // Use a lambda function to check if a edge should be deleted
-                        auto shouldDeleteConnection = [&](const Edge& edge) {
-                            return edge.start == removedNode || edge.end == removedNode;
-                        };
-
-                        edgeData.erase(remove_if(edgeData.begin(), edgeData.end(), shouldDeleteConnection), edgeData.end());
                         break;  // Exit loop after deleting the node and its edges
                     }
                 }
 
                 // delete edge
-                vector<RectangleShape> edges = getConnectionsBetweenNodes(edgeData);
-                for (int i=0; i<edgeData.size(); i++) {
-                    if (edges[i].getGlobalBounds().contains(mousePos)) {
-                        edgeData.erase(edgeData.begin()+i);
+                for (auto& [node, currNodeEdges] : edgeData) {
+                    for (auto it = currNodeEdges.begin(); it != currNodeEdges.end(); ) {
+                        auto& e = *it;
+
+                        RectangleShape edgeShape = getShapeForEdge(node, e.first, e.second);
+                        std::array<Vector2f, 4> vertices;
+                        for (int vertexId = 0; vertexId < 4; ++vertexId) {
+                            vertices[vertexId] = edgeShape.getTransform().transformPoint(edgeShape.getPoint(vertexId));
+                        }
+                        int n = vertices.size();
+                        int a, b;
+                        bool cursorInEdge = false;
+                        for (a = 0, b = n - 1; a < n; b = a++) {
+                            if (((vertices[a].y > mousePos.y) != (vertices[b].y > mousePos.y)) &&
+                                (mousePos.x < (vertices[b].x - vertices[a].x) * (mousePos.y - vertices[a].y) / (vertices[b].y - vertices[a].y) + vertices[a].x)) {
+                                cursorInEdge = !cursorInEdge;
+                                }
+                        }
+                        if (cursorInEdge) {
+                            it = currNodeEdges.erase(it); // Erase returns the next iterator
+                        } else {
+                            ++it; // Increment iterator if not erasing
+                        }
                     }
                 }
             }
@@ -324,9 +354,10 @@ int main() {
             else if (lineStartIdx!=-1 && event.type == Event::MouseButtonReleased && event.mouseButton.button == Mouse::Right) {
                 Vector2f mousePos = Vector2f(Mouse::getPosition(window));
                 for (int lineEndIdx = 0; lineEndIdx < nodes.size(); lineEndIdx++) {
+                    if (lineStartIdx == lineEndIdx) continue; // cant make a self edge
                     if (nodes[lineEndIdx]->node.getGlobalBounds().contains(mousePos)) {
                         if (!doesConnectionExist(edgeData, nodes[lineStartIdx], nodes[lineEndIdx])) {
-                            edgeData.emplace_back(nodes[lineStartIdx], nodes[lineEndIdx]);
+                            edgeData[nodes[lineStartIdx]].emplace_back(nodes[lineEndIdx], 1);
                         }
 
                         lineStartIdx = -1;
@@ -391,9 +422,13 @@ int main() {
         }
 
         window.clear(Color::White);
-        for (const auto& edge: getConnectionsBetweenNodes(edgeData)) {
-            window.draw(edge);
+        for (auto& [node, currNodeEdges] : edgeData) {
+            for (auto& e: currNodeEdges) {
+                RectangleShape edgeShape = getShapeForEdge(node, e.first, e.second);
+                window.draw(edgeShape);
+            }
         }
+
         drawArrowheads(edgeData, nodeRadius, window);
 
         for (auto& n : nodes) {

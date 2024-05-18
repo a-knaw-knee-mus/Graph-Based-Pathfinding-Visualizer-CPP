@@ -15,11 +15,45 @@ enum nodeState {
     VisitedNoPath, // visited nodes where a path wasn't found
 };
 
+class UniqueIDGenerator {
+public:
+    static int generateID() {
+        static int counter = 0;
+        return ++counter;
+    }
+};
+
 struct Node {
     CircleShape node;
     nodeState state;
+    int id;
 
-    Node(const CircleShape node, const nodeState state=Clear) : node(node), state(state) {}
+    Node(const CircleShape node, const nodeState state=Clear) : node(node), state(state) {
+        id = UniqueIDGenerator::generateID();
+    }
+
+    bool operator==(const Node& other) const {
+        return id == other.id;
+    }
+
+    struct Hash {
+        size_t operator()(const Node& node) const {
+            return hash<int>()(node.id);
+        }
+    };
+};
+
+
+struct NodePtrHash {
+    size_t operator()(const shared_ptr<Node>& nodePtr) const {
+        return hash<int>()(nodePtr->id);
+    }
+};
+
+struct NodePtrEqual {
+    bool operator()(const shared_ptr<Node>& lhs, const shared_ptr<Node>& rhs) const {
+        return lhs->id == rhs->id;
+    }
 };
 
 struct Edge {

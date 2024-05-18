@@ -13,6 +13,15 @@
 using namespace sf;
 using namespace std;
 
+// Remove Visited, InQueue and Path Cells
+void resetPathfinding(vector<shared_ptr<Node>> nodes) {
+    for (const auto& n: nodes) {
+        if (n->state == Visited || n->state == Path || n->state == InQueue || n->state == VisitedNoPath) {
+            n->state = Clear;
+        }
+    }
+}
+
 Color getEdgeColor(int weight) {
     switch(weight) {
         case 1:
@@ -220,6 +229,7 @@ int main() {
             else if (event.type == Event::KeyReleased && event.key.code == Keyboard::Enter) {
                 if (startNode == nullptr) continue;
                 if (endNode == nullptr) continue;
+                resetPathfinding(nodes);
                 findDijkstraPath(nodes, edgeData, window, startNode, endNode);
             }
 
@@ -244,6 +254,7 @@ int main() {
                         }
                     }
                 }
+                resetPathfinding(nodes);
             }
             else if (isShiftPressed && Mouse::isButtonPressed(Mouse::Right)) { // set end node
                 Vector2f mousePos = Vector2f(Mouse::getPosition(window));
@@ -259,6 +270,7 @@ int main() {
                         }
                     }
                 }
+                resetPathfinding(nodes);
             }
 
             // delete node/edge on shift+left click
@@ -294,6 +306,7 @@ int main() {
                         }
                         edgeData.erase(nodes[i]); // delete edges coming from this node
                         nodes.erase(nodes.begin() + i);
+                        resetPathfinding(nodes);
                         break;  // Exit loop after deleting the node and its edges
                     }
                 }
@@ -319,6 +332,7 @@ int main() {
                         }
                         if (cursorInEdge) {
                             it = currNodeEdges.erase(it); // Erase returns the next iterator
+                            resetPathfinding(nodes);
                         } else {
                             ++it; // Increment iterator if not erasing
                         }
@@ -343,6 +357,7 @@ int main() {
                     if (nodes[lineEndIdx]->node.getGlobalBounds().contains(mousePos)) {
                         if (!doesConnectionExist(edgeData, nodes[lineStartIdx], nodes[lineEndIdx])) {
                             edgeData[nodes[lineStartIdx]].emplace_back(nodes[lineEndIdx], 2);
+                            resetPathfinding(nodes);
                         }
 
                         lineStartIdx = -1;
@@ -368,6 +383,8 @@ int main() {
             // generate random graph
             else if (event.type == Event::KeyReleased) {
                 if (event.key.code == Keyboard::Space) {
+                    startNode = nullptr;
+                    endNode = nullptr;
                     genRandomGraph(nodes, edgeData, nodeRadius, window);
                 }
             }

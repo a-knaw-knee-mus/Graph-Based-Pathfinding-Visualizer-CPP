@@ -9,7 +9,7 @@
 using namespace std;
 using namespace sf;
 
-void findDijkstraPath(vector<shared_ptr<Node>>& nodes, unordered_map<shared_ptr<Node>, vector<pair<shared_ptr<Node>, int>>, NodePtrHash, NodePtrEqual>& edgeData, RenderWindow& window, shared_ptr<Node>& startNode, shared_ptr<Node>& endNode) {
+void findDijkstraPath(vector<shared_ptr<Node>>& nodes, const unordered_map<shared_ptr<Node>, vector<pair<shared_ptr<Node>, int>>, NodePtrHash, NodePtrEqual>& edgeData, RenderWindow& window, const shared_ptr<Node>& startNode, const shared_ptr<Node>& endNode) {
     unordered_map<shared_ptr<Node>, int, NodePtrHash, NodePtrEqual> distances;
     unordered_map<shared_ptr<Node>, shared_ptr<Node>, NodePtrHash, NodePtrEqual> previous;
     for (const auto& [node, neighbors]: edgeData) {
@@ -33,8 +33,7 @@ void findDijkstraPath(vector<shared_ptr<Node>>& nodes, unordered_map<shared_ptr<
             pathFound = true;
             break;
         }
-
-        for (const auto& neighbor: edgeData[currentNode]) {
+        for (const auto& neighbor: edgeData.at(currentNode)) {
             shared_ptr<Node> neighborNode = neighbor.first;
             int weight = neighbor.second;
             int newDist = distances[currentNode] + weight;
@@ -59,7 +58,6 @@ void findDijkstraPath(vector<shared_ptr<Node>>& nodes, unordered_map<shared_ptr<
         n->state = Path;
     }
 
-    //cout << "min dist: " << distances[endNode] << endl;
     if (pathFound) {
         cout << "min dist: " << distances[endNode] << endl;
     } else {

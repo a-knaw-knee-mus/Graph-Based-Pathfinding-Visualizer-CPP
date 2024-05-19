@@ -121,7 +121,7 @@ int main() {
     RenderWindow window(VideoMode(600, 600), "Graph Pathfinding");
 
     // Define two circles
-    int nodeRadius = 20;
+    int nodeRadius = 10;
     if (nodeRadius < 5) nodeRadius = 5; // anything smaller wont render
     vector<shared_ptr<Node>> nodes;
     //vector<Edge> edgeData;
@@ -175,34 +175,38 @@ int main() {
             else if (isShiftPressed && Mouse::isButtonPressed(Mouse::Left)) { // set start node
                 Vector2f mousePos = Vector2f(Mouse::getPosition(window));
                 for (int i = 0; i < nodes.size(); i++) {
-                    if (nodes[i]->state == Start) {
-                        nodes[i]->state = Clear;
-                    }
                     if (nodes[i]->node.getGlobalBounds().contains(mousePos)) {
+                        for (auto& n: nodes) {
+                            if (n->state == Start) {
+                                n->state = Clear;
+                            }
+                        }
                         startNode = nodes[i];
                         nodes[i]->state = Start;
                         if (startNode == endNode) { // override endnode
                             endNode = nullptr;
                         }
+                        resetPathfinding(nodes);
                     }
                 }
-                resetPathfinding(nodes);
             }
             else if (isShiftPressed && Mouse::isButtonPressed(Mouse::Right)) { // set end node
                 Vector2f mousePos = Vector2f(Mouse::getPosition(window));
                 for (int i = 0; i < nodes.size(); i++) {
-                    if (nodes[i]->state == End) {
-                        nodes[i]->state = Clear;
-                    }
                     if (nodes[i]->node.getGlobalBounds().contains(mousePos)) {
+                        for (auto& n: nodes) {
+                            if (n->state == End) {
+                                n->state = Clear;
+                            }
+                        }
                         endNode = nodes[i];
                         nodes[i]->state = End;
                         if (endNode == startNode) { // override startnode
                             startNode = nullptr;
                         }
+                        resetPathfinding(nodes);
                     }
                 }
-                resetPathfinding(nodes);
             }
 
             // delete node/edge on shift+left click

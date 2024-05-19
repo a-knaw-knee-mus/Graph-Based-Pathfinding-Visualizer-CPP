@@ -91,5 +91,11 @@ void findDijkstraPath(vector<shared_ptr<Node>>& nodes, const unordered_map<share
         cout << "min dist: " << distances[endNode] << endl;
     } else {
         cout << "no path found" << endl;
+        for (const auto& n: nodes) {
+            if (n->state == Visited) {
+                n->state = VisitedNoPath;
+            }
+        }
+        refreshScreen(nodes, edgeData, window);
     }
 }

@@ -3,7 +3,7 @@ project(graph_search)
 
 set(CMAKE_CXX_STANDARD 23)
 
-add_executable(graph_search main.cpp include/pathfinding.cpp include/window.cpp)
+add_executable(graph_search main.cpp include/pathfinding.cpp include/window.cpp include/mst.cpp)
 
 set(SFML_STATIC_LIBRARIES TRUE)
 set(SFML_DIR /sfml)

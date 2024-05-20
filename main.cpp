@@ -10,6 +10,7 @@
 #include "include/states.h"
 #include "include/pathfinding.h"
 #include "include/window.h"
+#include "include/mst.h"
 using namespace sf;
 using namespace std;
 
@@ -160,11 +161,12 @@ int main() {
 
             // begin search
             else if (event.type == Event::KeyReleased && event.key.code == Keyboard::Enter) {
-                if (startNode == nullptr) continue;
-                if (endNode == nullptr) continue;
+                // if (startNode == nullptr) continue;
+                // if (endNode == nullptr) continue;
                 resetPathfinding(nodes);
                 //findDijkstraPath(nodes, edgeData, window, startNode, endNode);
-                bellmanFord(nodes, edgeData, window, startNode, endNode);
+                //bellmanFord(nodes, edgeData, window, startNode, endNode);
+                kruskal(nodes, edgeData, window);
             }
 
             // add start/end node

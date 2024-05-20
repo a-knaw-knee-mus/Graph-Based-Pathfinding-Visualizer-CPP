@@ -90,10 +90,11 @@ void genRandomGraph(vector<shared_ptr<Node>>& nodes, unordered_map<shared_ptr<No
                 if (row+dx[neighborId] >= nodeGrid.size()) continue;
                 if (col+dy[neighborId] >= nodeGrid.size()) continue;
                 int direction = rand() % 2; // 0 or 1; from current node or to current node
+                int weight = rand() % 5 + 1;
                 if (direction == 0) {
-                    edgeData[nodeGrid[row][col]].emplace_back(nodeGrid[row+dx[neighborId]][col+dy[neighborId]], 1);
+                    edgeData[nodeGrid[row][col]].emplace_back(nodeGrid[row+dx[neighborId]][col+dy[neighborId]], weight);
                 } else {
-                    edgeData[nodeGrid[row+dx[neighborId]][col+dy[neighborId]]].emplace_back(nodeGrid[row][col], 1);
+                    edgeData[nodeGrid[row+dx[neighborId]][col+dy[neighborId]]].emplace_back(nodeGrid[row][col], weight);
                 }
             }
         }
@@ -162,7 +163,8 @@ int main() {
                 if (startNode == nullptr) continue;
                 if (endNode == nullptr) continue;
                 resetPathfinding(nodes);
-                findDijkstraPath(nodes, edgeData, window, startNode, endNode);
+                //findDijkstraPath(nodes, edgeData, window, startNode, endNode);
+                bellmanFord(nodes, edgeData, window, startNode, endNode);
             }
 
             // add start/end node

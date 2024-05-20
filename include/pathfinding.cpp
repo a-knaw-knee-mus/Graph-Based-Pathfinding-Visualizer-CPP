@@ -17,6 +17,79 @@ bool isStartOrEnd(const shared_ptr<Node>& node, const shared_ptr<Node>& start, c
     return false;
 }
 
+void bellmanFord(vector<shared_ptr<Node>>& nodes, const unordered_map<shared_ptr<Node>, vector<pair<shared_ptr<Node>, int>>, NodePtrHash, NodePtrEqual>& edgeData, RenderWindow& window, const shared_ptr<Node>& startNode, const shared_ptr<Node>& endNode) {
+    // Initialize the distance and previous node maps
+    unordered_map<shared_ptr<Node>, int, NodePtrHash, NodePtrEqual> distances;
+    unordered_map<shared_ptr<Node>, shared_ptr<Node>, NodePtrHash, NodePtrEqual> previous;
+    for (const auto& pair : edgeData) {
+        distances[pair.first] = numeric_limits<int>::max();
+        previous[pair.first] = nullptr;
+    }
+    distances[startNode] = 0;
+    chrono::milliseconds duration(0);
+
+    // Relax all edges |V| - 1 times
+    for (size_t i = 0; i < edgeData.size() - 1; ++i) {
+        for (const auto& pair : edgeData) {
+            auto u = pair.first;
+            for (const auto& neighborPair : pair.second) {
+                auto v = neighborPair.first;
+                int weight = neighborPair.second;
+                if (distances[u] != numeric_limits<int>::max() && distances[u] + weight < distances[v]) {
+                    distances[v] = distances[u] + weight;
+                    previous[v] = u;
+                    if (!isStartOrEnd(v, startNode, endNode)) {
+                        v->state = Visited;
+                        this_thread::sleep_for(duration);
+                        refreshScreen(nodes, edgeData, window);
+                    }
+                }
+            }
+        }
+    }
+
+    // Check for negative-weight cycles
+    for (const auto& pair : edgeData) {
+        auto u = pair.first;
+        for (const auto& neighborPair : pair.second) {
+            auto v = neighborPair.first;
+            int weight = neighborPair.second;
+            if (distances[u] != numeric_limits<int>::max() && distances[u] + weight < distances[v]) {
+                cout << "Graph contains a negative-weight cycle" << endl;
+                return;
+            }
+        }
+    }
+
+    // Reconstruct the path from endNode to startNode
+    vector<shared_ptr<Node>> path;
+    for (shared_ptr<Node> at = endNode; at != nullptr; at = previous[at]) {
+        path.push_back(at);
+    }
+    reverse(path.begin(), path.end());
+
+    for (const auto& n: path) {
+        if (!isStartOrEnd(n, startNode, endNode)) {
+            n->state = Path;
+            chrono::milliseconds duration(50);
+            this_thread::sleep_for(duration);
+            refreshScreen(nodes, edgeData, window);
+        }
+    }
+
+    if (distances[endNode] != numeric_limits<int>::max()) {
+        cout << "min dist: " << distances[endNode] << endl;
+    } else {
+        cout << "no path found" << endl;
+        for (const auto& n: nodes) {
+            if (n->state == Visited) {
+                n->state = VisitedNoPath;
+            }
+        }
+        refreshScreen(nodes, edgeData, window);
+    }
+}
+
 void findDijkstraPath(vector<shared_ptr<Node>>& nodes, const unordered_map<shared_ptr<Node>, vector<pair<shared_ptr<Node>, int>>, NodePtrHash, NodePtrEqual>& edgeData, RenderWindow& window, const shared_ptr<Node>& startNode, const shared_ptr<Node>& endNode) {
     unordered_map<shared_ptr<Node>, int, NodePtrHash, NodePtrEqual> distances;
     unordered_map<shared_ptr<Node>, shared_ptr<Node>, NodePtrHash, NodePtrEqual> previous;

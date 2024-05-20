@@ -51,7 +51,7 @@ Color getEdgeColor(int weight) {
         case 3:
             return Color::Green;
         case 4:
-            return Color::Yellow;
+            return Color::Magenta;
         case 5:
             return Color::Cyan;
         default:

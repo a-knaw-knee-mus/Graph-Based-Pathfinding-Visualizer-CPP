@@ -55,11 +55,3 @@ struct NodePtrEqual {
         return lhs->id == rhs->id;
     }
 };
-
-struct Edge {
-    shared_ptr<Node> start, end;
-    int weight;
-
-    Edge(const shared_ptr<Node> start, const shared_ptr<Node> end, const int weight=1) : start(start), end(end), weight(weight) {}
-};
-

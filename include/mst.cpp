@@ -61,11 +61,11 @@ private:
 //     return false;
 // }
 
-void kruskal(vector<shared_ptr<Node>>& nodes, const unordered_map<shared_ptr<Node>, vector<pair<shared_ptr<Node>, int>>, NodePtrHash, NodePtrEqual>& edgeData, RenderWindow& window) {
+void kruskal(vector<shared_ptr<Node>>& nodes, unordered_map<shared_ptr<Node>, vector<tuple<shared_ptr<Node>, int, int>>, NodePtrHash, NodePtrEqual>& edgeData, RenderWindow& window) {
     vector<Edge> edges;
 
     for (const auto& [node, neighbors]: edgeData) {
-        for (const auto& [neighborNode, weight]: neighbors) {
+        for (const auto& [neighborNode, weight, width]: neighbors) {
             edges.push_back({node, neighborNode, weight});
         }
     }
@@ -92,6 +92,11 @@ void kruskal(vector<shared_ptr<Node>>& nodes, const unordered_map<shared_ptr<Nod
             uf.unionSets(u, v);
             mst.push_back(edge);
             edge.u->state = Path;
+            for (auto& e: edgeData[edge.u]) {
+                if (get<0>(e) == edge.v) {
+                    get<2>(e) = 3; // modify edge size to indicate this edge was taken
+                }
+            }
             edge.v->state = Path;
             mstWeight += edge.weight;
         }

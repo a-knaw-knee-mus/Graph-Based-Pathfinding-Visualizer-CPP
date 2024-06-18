@@ -17,7 +17,7 @@ bool isStartOrEnd(const shared_ptr<Node>& node, const shared_ptr<Node>& start, c
     return false;
 }
 
-void bellmanFord(vector<shared_ptr<Node>>& nodes, const unordered_map<shared_ptr<Node>, vector<pair<shared_ptr<Node>, int>>, NodePtrHash, NodePtrEqual>& edgeData, RenderWindow& window, const shared_ptr<Node>& startNode, const shared_ptr<Node>& endNode) {
+void bellmanFord(vector<shared_ptr<Node>>& nodes, unordered_map<shared_ptr<Node>, vector<tuple<shared_ptr<Node>, int, int>>, NodePtrHash, NodePtrEqual>& edgeData, RenderWindow& window, const shared_ptr<Node>& startNode, const shared_ptr<Node>& endNode) {
     // Initialize the distance and previous node maps
     unordered_map<shared_ptr<Node>, int, NodePtrHash, NodePtrEqual> distances;
     unordered_map<shared_ptr<Node>, shared_ptr<Node>, NodePtrHash, NodePtrEqual> previous;
@@ -26,15 +26,15 @@ void bellmanFord(vector<shared_ptr<Node>>& nodes, const unordered_map<shared_ptr
         previous[pair.first] = nullptr;
     }
     distances[startNode] = 0;
-    chrono::milliseconds duration(0);
+    chrono::milliseconds duration(10);
 
     // Relax all edges |V| - 1 times
     for (size_t i = 0; i < edgeData.size() - 1; ++i) {
         for (const auto& pair : edgeData) {
             auto u = pair.first;
             for (const auto& neighborPair : pair.second) {
-                auto v = neighborPair.first;
-                int weight = neighborPair.second;
+                auto v = get<0>(neighborPair);
+                int weight = get<1>(neighborPair);
                 if (distances[u] != numeric_limits<int>::max() && distances[u] + weight < distances[v]) {
                     distances[v] = distances[u] + weight;
                     previous[v] = u;
@@ -52,8 +52,8 @@ void bellmanFord(vector<shared_ptr<Node>>& nodes, const unordered_map<shared_ptr
     for (const auto& pair : edgeData) {
         auto u = pair.first;
         for (const auto& neighborPair : pair.second) {
-            auto v = neighborPair.first;
-            int weight = neighborPair.second;
+            auto v = get<0>(neighborPair);
+            int weight = get<1>(neighborPair);
             if (distances[u] != numeric_limits<int>::max() && distances[u] + weight < distances[v]) {
                 cout << "Graph contains a negative-weight cycle" << endl;
                 return;
@@ -68,9 +68,14 @@ void bellmanFord(vector<shared_ptr<Node>>& nodes, const unordered_map<shared_ptr
     }
     reverse(path.begin(), path.end());
 
-    for (const auto& n: path) {
-        if (!isStartOrEnd(n, startNode, endNode)) {
-            n->state = Path;
+    for (int i=0; i<path.size()-1; i++) {
+        for (auto& e: edgeData[path[i]]) {
+            if (get<0>(e) == path[i+1]) {
+                get<2>(e) = 3; // modify edge size to indicate this edge was taken
+            }
+        }
+        if (!isStartOrEnd(path[i], startNode, endNode)) {
+            path[i]->state = Path;
             chrono::milliseconds duration(50);
             this_thread::sleep_for(duration);
             refreshScreen(nodes, edgeData, window);
@@ -90,7 +95,7 @@ void bellmanFord(vector<shared_ptr<Node>>& nodes, const unordered_map<shared_ptr
     }
 }
 
-void findDijkstraPath(vector<shared_ptr<Node>>& nodes, const unordered_map<shared_ptr<Node>, vector<pair<shared_ptr<Node>, int>>, NodePtrHash, NodePtrEqual>& edgeData, RenderWindow& window, const shared_ptr<Node>& startNode, const shared_ptr<Node>& endNode) {
+void findDijkstraPath(vector<shared_ptr<Node>>& nodes, unordered_map<shared_ptr<Node>, vector<tuple<shared_ptr<Node>, int, int>>, NodePtrHash, NodePtrEqual>& edgeData, RenderWindow& window, const shared_ptr<Node>& startNode, const shared_ptr<Node>& endNode) {
     unordered_map<shared_ptr<Node>, int, NodePtrHash, NodePtrEqual> distances;
     unordered_map<shared_ptr<Node>, shared_ptr<Node>, NodePtrHash, NodePtrEqual> previous;
     for (const auto& [node, neighbors]: edgeData) {
@@ -105,7 +110,7 @@ void findDijkstraPath(vector<shared_ptr<Node>>& nodes, const unordered_map<share
     pq.push(startNode);
 
     bool pathFound = false;
-    chrono::milliseconds duration(0);
+    chrono::milliseconds duration(10);
 
     while (!pq.empty()) {
         shared_ptr<Node> currentNode = pq.top();
@@ -117,8 +122,8 @@ void findDijkstraPath(vector<shared_ptr<Node>>& nodes, const unordered_map<share
         }
 
         for (const auto& neighbor: edgeData.at(currentNode)) {
-            shared_ptr<Node> neighborNode = neighbor.first;
-            int weight = neighbor.second;
+            shared_ptr<Node> neighborNode = get<0>(neighbor);
+            int weight = get<1>(neighbor);
             int newDist = distances[currentNode] + weight;
 
             if (newDist < distances[neighborNode]) {
@@ -151,9 +156,14 @@ void findDijkstraPath(vector<shared_ptr<Node>>& nodes, const unordered_map<share
     }
     reverse(path.begin(), path.end());
 
-    for (const auto& n: path) {
-        if (!isStartOrEnd(n, startNode, endNode)) {
-            n->state = Path;
+    for (int i=0; i<path.size()-1; i++) {
+        for (auto& e: edgeData[path[i]]) {
+            if (get<0>(e) == path[i+1]) {
+                get<2>(e) = 3; // modify edge size to indicate this edge was taken
+            }
+        }
+        if (!isStartOrEnd(path[i], startNode, endNode)) {
+            path[i]->state = Path;
             chrono::milliseconds duration(50);
             this_thread::sleep_for(duration);
             refreshScreen(nodes, edgeData, window);

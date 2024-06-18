@@ -60,15 +60,15 @@ Color getEdgeColor(int weight) {
 }
 
 // draw arrowheads to show edge direction
-void drawArrowheads(const unordered_map<shared_ptr<Node>, vector<pair<shared_ptr<Node>, int>>, NodePtrHash, NodePtrEqual>& edgeData, RenderWindow& window) {
+void drawArrowheads(const unordered_map<shared_ptr<Node>, vector<tuple<shared_ptr<Node>, int, int>>, NodePtrHash, NodePtrEqual>& edgeData, RenderWindow& window) {
     vector<ConvexShape> arrowheads{};
 
     for (auto& [node, currNodeEdges] : edgeData) {
         int i = 0;
         for (auto& e: currNodeEdges) {
-            Vector2f point1 = e.first->node.getPosition();
+            Vector2f point1 = get<0>(e)->node.getPosition();
             Vector2f point2 = node->node.getPosition();
-            const int nodeRadius = e.first->node.getRadius() + 4; // +4 for border
+            const int nodeRadius = get<0>(e)->node.getRadius() + 4; // +4 for border
 
             // Calculate the angle between point1 and point2
             float dx = point2.x - point1.x;
@@ -84,7 +84,7 @@ void drawArrowheads(const unordered_map<shared_ptr<Node>, vector<pair<shared_ptr
             float height = nodeRadius*0.65;
             if (height < 5) height = 5; // set min arrowhead height
             float width = nodeRadius*0.5;
-            if (width < 3.85) width = 3.85; // set min arrowhead width
+            if (width < 3.85*get<2>(e)) width = 3.85*get<2>(e); // set min arrowhead width
 
             arrowhead.setPoint(0, Vector2f(0.f, startY)); // Top point of the triangle
             arrowhead.setPoint(1, Vector2f(-(width/2), startY+height)); // Bottom left point
@@ -92,18 +92,18 @@ void drawArrowheads(const unordered_map<shared_ptr<Node>, vector<pair<shared_ptr
             arrowhead.setOrigin(0.f, -20.f); // Set origin to top point
             arrowhead.setPosition(point1); // Set position to point 1
             arrowhead.setRotation(angle-90); // Set rotation towards point 2
-            arrowhead.setFillColor(getEdgeColor(e.second));
+            arrowhead.setFillColor(getEdgeColor(get<1>(e)));
 
             window.draw(arrowhead);
         }
     }
 }
 
-RectangleShape getShapeForEdge(const shared_ptr<Node>& startNode, const shared_ptr<Node>& endNode, int weight) {
+RectangleShape getShapeForEdge(const shared_ptr<Node>& startNode, const shared_ptr<Node>& endNode, const int weight, const int thickness) {
     Vector2f startPos = startNode->node.getPosition();
     Vector2f endPos = endNode->node.getPosition();
     float distance = sqrt(pow(endPos.x - startPos.x, 2) + pow(endPos.y - startPos.y, 2));
-    RectangleShape line(Vector2f(distance, 1));
+    RectangleShape line(Vector2f(distance, thickness));
     line.setPosition(startPos);
     line.setFillColor(getEdgeColor(weight));
     float angle = atan2(endPos.y - startPos.y, endPos.x - startPos.x);
@@ -111,13 +111,13 @@ RectangleShape getShapeForEdge(const shared_ptr<Node>& startNode, const shared_p
     return line;
 }
 
-void refreshScreen(const vector<shared_ptr<Node>>& nodes, const unordered_map<shared_ptr<Node>, vector<pair<shared_ptr<Node>, int>>, NodePtrHash, NodePtrEqual>& edgeData, RenderWindow& window) {
+void refreshScreen(const vector<shared_ptr<Node>>& nodes, const unordered_map<shared_ptr<Node>, vector<tuple<shared_ptr<Node>, int, int>>, NodePtrHash, NodePtrEqual>& edgeData, RenderWindow& window) {
     window.clear(Color::White);
 
     // draw edges
     for (auto& [node, currNodeEdges] : edgeData) {
         for (auto& e: currNodeEdges) {
-            RectangleShape edgeShape = getShapeForEdge(node, e.first, e.second);
+            RectangleShape edgeShape = getShapeForEdge(node, get<0>(e), get<1>(e), get<2>(e));
             window.draw(edgeShape);
         }
     }

@@ -58,7 +58,7 @@ void addNode(vector<shared_ptr<Node>>& nodes, const int circleRadius, RenderWind
     }
 }
 
-void genRandomGraph(vector<shared_ptr<Node>>& nodes, unordered_map<shared_ptr<Node>, vector<pair<shared_ptr<Node>, int>>, NodePtrHash, NodePtrEqual>& edgeData, const int circleRadius, RenderWindow& window) {
+void genRandomGraph(vector<shared_ptr<Node>>& nodes, unordered_map<shared_ptr<Node>, vector<tuple<shared_ptr<Node>, int, int>>, NodePtrHash, NodePtrEqual>& edgeData, const int circleRadius, RenderWindow& window) {
     nodes.clear();
     edgeData.clear();
 
@@ -93,9 +93,9 @@ void genRandomGraph(vector<shared_ptr<Node>>& nodes, unordered_map<shared_ptr<No
                 int direction = rand() % 2; // 0 or 1; from current node or to current node
                 int weight = rand() % 5 + 1;
                 if (direction == 0) {
-                    edgeData[nodeGrid[row][col]].emplace_back(nodeGrid[row+dx[neighborId]][col+dy[neighborId]], weight);
+                    edgeData[nodeGrid[row][col]].emplace_back(nodeGrid[row+dx[neighborId]][col+dy[neighborId]], weight, 1);
                 } else {
-                    edgeData[nodeGrid[row+dx[neighborId]][col+dy[neighborId]]].emplace_back(nodeGrid[row][col], weight);
+                    edgeData[nodeGrid[row+dx[neighborId]][col+dy[neighborId]]].emplace_back(nodeGrid[row][col], weight, 1);
                 }
             }
         }
@@ -112,9 +112,9 @@ float distance(Vector2f v1, Vector2f v2, Vector2f p) {
 }
 
 // check if edge between start and end node exists
-bool doesConnectionExist(unordered_map<shared_ptr<Node>, vector<pair<shared_ptr<Node>, int>>, NodePtrHash, NodePtrEqual>& edgeData, shared_ptr<Node>& start, shared_ptr<Node>& end) {
+bool doesConnectionExist(unordered_map<shared_ptr<Node>, vector<tuple<shared_ptr<Node>, int, int>>, NodePtrHash, NodePtrEqual>& edgeData, shared_ptr<Node>& start, shared_ptr<Node>& end) {
     for (const auto& edge : edgeData[start]) {
-        if (edge.first == end) return true;
+        if (get<0>(edge) == end) return true;
     }
     return false;
 }
@@ -126,8 +126,9 @@ int main() {
     int nodeRadius = 10;
     if (nodeRadius < 5) nodeRadius = 5; // anything smaller wont render
     vector<shared_ptr<Node>> nodes;
-    //vector<Edge> edgeData;
-    unordered_map<shared_ptr<Node>, vector<pair<shared_ptr<Node>, int>>, NodePtrHash, NodePtrEqual> edgeData;
+
+    // key=node, val=<end_node, weight, thickness>
+    unordered_map<shared_ptr<Node>, vector<tuple<shared_ptr<Node>, int, int>>, NodePtrHash, NodePtrEqual> edgeData;
 
     // set 2 default nodes with 1 edge
     CircleShape node1(nodeRadius-4);
@@ -144,7 +145,7 @@ int main() {
     node2.setOrigin({ node2.getRadius(), node2.getRadius() });
     nodes.push_back(make_shared<Node>(Node(node2)));
 
-    edgeData[nodes[0]].emplace_back(nodes[1], 1); // edge from node1 to node2
+    edgeData[nodes[0]].emplace_back(nodes[1], 1, 1); // edge from node1 to node2
 
     int currCircle = -1;
     int lineStartIdx=-1;
@@ -161,12 +162,12 @@ int main() {
 
             // begin search
             else if (event.type == Event::KeyReleased && event.key.code == Keyboard::Enter) {
-                // if (startNode == nullptr) continue;
-                // if (endNode == nullptr) continue;
+                if (startNode == nullptr) continue;
+                if (endNode == nullptr) continue;
                 resetPathfinding(nodes);
                 //findDijkstraPath(nodes, edgeData, window, startNode, endNode);
-                //bellmanFord(nodes, edgeData, window, startNode, endNode);
-                kruskal(nodes, edgeData, window);
+                bellmanFord(nodes, edgeData, window, startNode, endNode);
+                //kruskal(nodes, edgeData, window);
             }
 
             // add start/end node
@@ -238,7 +239,7 @@ int main() {
                         for (auto& [node, currNodeEdges] : edgeData) {
                             int j = 0;
                             for (auto& e: currNodeEdges) {
-                                if (e.first == removedNode) {
+                                if (get<0>(e) == removedNode) {
                                     edgeData[node].erase(edgeData[node].begin()+j);
                                 }
                                 j++;
@@ -256,7 +257,7 @@ int main() {
                     for (auto it = currNodeEdges.begin(); it != currNodeEdges.end(); ) {
                         auto& e = *it;
 
-                        RectangleShape edgeShape = getShapeForEdge(node, e.first, e.second);
+                        RectangleShape edgeShape = getShapeForEdge(node, get<0>(e), get<1>(e), get<2>(e));
                         std::array<Vector2f, 4> vertices;
                         for (int vertexId = 0; vertexId < 4; ++vertexId) {
                             vertices[vertexId] = edgeShape.getTransform().transformPoint(edgeShape.getPoint(vertexId));
@@ -296,7 +297,7 @@ int main() {
                     if (lineStartIdx == lineEndIdx) continue; // cant make a self edge
                     if (nodes[lineEndIdx]->node.getGlobalBounds().contains(mousePos)) {
                         if (!doesConnectionExist(edgeData, nodes[lineStartIdx], nodes[lineEndIdx])) {
-                            edgeData[nodes[lineStartIdx]].emplace_back(nodes[lineEndIdx], 2);
+                            edgeData[nodes[lineStartIdx]].emplace_back(nodes[lineEndIdx], 1, 1);
                             resetPathfinding(nodes);
                         }
 

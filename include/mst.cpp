@@ -56,11 +56,6 @@ private:
     vector<int> rank;
 };
 
-// bool isStartOrEnd(const shared_ptr<Node>& node, const shared_ptr<Node>& start, const shared_ptr<Node>& end) {
-//     if (node == start || node == end) return true;
-//     return false;
-// }
-
 void kruskal(vector<shared_ptr<Node>>& nodes, unordered_map<shared_ptr<Node>, vector<tuple<shared_ptr<Node>, int, int>>, NodePtrHash, NodePtrEqual>& edgeData, RenderWindow& window) {
     vector<Edge> edges;
 
@@ -82,6 +77,7 @@ void kruskal(vector<shared_ptr<Node>>& nodes, unordered_map<shared_ptr<Node>, ve
 
     vector<Edge> mst;
     int mstWeight = 0;
+    chrono::milliseconds duration(10);
 
     // Kruskal's algorithm
     for (const auto& edge : edges) {
@@ -98,14 +94,66 @@ void kruskal(vector<shared_ptr<Node>>& nodes, unordered_map<shared_ptr<Node>, ve
                 }
             }
             edge.v->state = Path;
+            this_thread::sleep_for(duration);
+            refreshScreen(nodes, edgeData, window);
             mstWeight += edge.weight;
         }
     }
 
     // Output the MST edges and total weight
     cout << "Minimum Spanning Tree Weight: " << mstWeight << endl;
-    cout << "Edges in the MST:" << endl;
-    // for (const auto& edge : mst) {
-    //     cout << "Node " << edge.u->id << " - Node " << edge.v->id << " with weight " << edge.weight << endl;
-    // }
+}
+
+void prim(vector<shared_ptr<Node>>& nodes, unordered_map<shared_ptr<Node>, vector<tuple<shared_ptr<Node>, int, int>>, NodePtrHash, NodePtrEqual>& edgeData, RenderWindow& window) {
+    unordered_map<shared_ptr<Node>, bool, NodePtrHash, NodePtrEqual> inMST;
+    priority_queue<Edge> pq;
+
+    // Start from any arbitrary node, here we start from the first node in edgeData
+    auto startNode = edgeData.begin()->first;
+    inMST[startNode] = true;
+
+    // Add all edges from the start node to the priority queue
+    for (const auto& [neighborNode, weight, width] : edgeData[startNode]) {
+        pq.push({startNode, neighborNode, weight});
+    }
+
+    vector<Edge> mst;
+    int mstWeight = 0;
+    chrono::milliseconds duration(10);
+
+    while (!pq.empty()) {
+        Edge edge = pq.top();
+        pq.pop();
+
+        // If the destination node is already in the MST, skip this edge
+        if (inMST[edge.v]) {
+            continue;
+        }
+
+        // Add the edge to the MST
+        mst.push_back(edge);
+        mstWeight += edge.weight;
+        edge.u->state = Path;
+        for (auto& e: edgeData[edge.u]) {
+            if (get<0>(e) == edge.v) {
+                get<2>(e) = 3; // modify edge size to indicate this edge was taken
+            }
+        }
+        edge.v->state = Path;
+        this_thread::sleep_for(duration);
+        refreshScreen(nodes, edgeData, window);
+
+        // Mark the new node as included in the MST
+        inMST[edge.v] = true;
+
+        // Add all edges from the new node to the priority queue
+        for (const auto& [neighborNode, weight, width] : edgeData[edge.v]) {
+            if (!inMST[neighborNode]) {
+                pq.push({edge.v, neighborNode, weight});
+            }
+        }
+    }
+
+    // Output the MST edges and total weight
+    cout << "Minimum Spanning Tree Weight: " << mstWeight << endl;
 }

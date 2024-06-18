@@ -15,10 +15,16 @@ using namespace sf;
 using namespace std;
 
 // Remove Visited, InQueue and Path Cells
-void resetPathfinding(vector<shared_ptr<Node>> nodes) {
+void resetPathfinding(vector<shared_ptr<Node>>& nodes, unordered_map<shared_ptr<Node>, vector<tuple<shared_ptr<Node>, int, int>>, NodePtrHash, NodePtrEqual>& edgeData) {
     for (const auto& n: nodes) {
         if (n->state == Visited || n->state == Path || n->state == InQueue || n->state == VisitedNoPath) {
             n->state = Clear;
+        }
+    }
+
+    for (auto& n: edgeData) {
+        for (auto& e: n.second) {
+            get<2>(e) = 1; // set thickness of all edges back to 1
         }
     }
 }
@@ -161,13 +167,30 @@ int main() {
                 window.close();
 
             // begin search
-            else if (event.type == Event::KeyReleased && event.key.code == Keyboard::Enter) {
+            else if (event.type == Event::KeyReleased && event.key.code == Keyboard::Num1) {
                 if (startNode == nullptr) continue;
                 if (endNode == nullptr) continue;
-                resetPathfinding(nodes);
-                //findDijkstraPath(nodes, edgeData, window, startNode, endNode);
+                resetPathfinding(nodes, edgeData);
+                findDijkstraPath(nodes, edgeData, window, startNode, endNode);
+            }
+            else if (event.type == Event::KeyReleased && event.key.code == Keyboard::Num2) {
+                if (startNode == nullptr) continue;
+                if (endNode == nullptr) continue;
+                resetPathfinding(nodes, edgeData);
                 bellmanFord(nodes, edgeData, window, startNode, endNode);
                 //kruskal(nodes, edgeData, window);
+            }
+            else if (event.type == Event::KeyReleased && event.key.code == Keyboard::Num3) {
+                if (startNode == nullptr) continue;
+                if (endNode == nullptr) continue;
+                resetPathfinding(nodes, edgeData);
+                kruskal(nodes,edgeData, window);
+            }
+            else if (event.type == Event::KeyReleased && event.key.code == Keyboard::Num4) {
+                if (startNode == nullptr) continue;
+                if (endNode == nullptr) continue;
+                resetPathfinding(nodes, edgeData);
+                prim(nodes, edgeData, window);
             }
 
             // add start/end node
@@ -191,7 +214,7 @@ int main() {
                         if (startNode == endNode) { // override endnode
                             endNode = nullptr;
                         }
-                        resetPathfinding(nodes);
+                        resetPathfinding(nodes, edgeData);
                     }
                 }
             }
@@ -209,7 +232,7 @@ int main() {
                         if (endNode == startNode) { // override startnode
                             startNode = nullptr;
                         }
-                        resetPathfinding(nodes);
+                        resetPathfinding(nodes, edgeData);
                     }
                 }
             }
@@ -247,7 +270,7 @@ int main() {
                         }
                         edgeData.erase(nodes[i]); // delete edges coming from this node
                         nodes.erase(nodes.begin() + i);
-                        resetPathfinding(nodes);
+                        resetPathfinding(nodes, edgeData);
                         break;  // Exit loop after deleting the node and its edges
                     }
                 }
@@ -273,7 +296,7 @@ int main() {
                         }
                         if (cursorInEdge) {
                             it = currNodeEdges.erase(it); // Erase returns the next iterator
-                            resetPathfinding(nodes);
+                            resetPathfinding(nodes, edgeData);
                         } else {
                             ++it; // Increment iterator if not erasing
                         }
@@ -298,7 +321,7 @@ int main() {
                     if (nodes[lineEndIdx]->node.getGlobalBounds().contains(mousePos)) {
                         if (!doesConnectionExist(edgeData, nodes[lineStartIdx], nodes[lineEndIdx])) {
                             edgeData[nodes[lineStartIdx]].emplace_back(nodes[lineEndIdx], 1, 1);
-                            resetPathfinding(nodes);
+                            resetPathfinding(nodes, edgeData);
                         }
 
                         lineStartIdx = -1;
